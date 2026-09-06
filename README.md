@@ -2,18 +2,97 @@
 ### Smart India Hackathon 2026 · Problem Statement 26171
 > **On-Device Visual Perception for Light-weight Browser Agents** — Developed for **ISRO (Indian Space Research Organisation)**
 
-[![SIH 2026](https://img.shields.io/badge/SIH-2026-orange.svg)](https://sih.gov.in)
-[![Organization](https://img.shields.io/badge/Organization-ISRO-blue.svg)](https://www.isro.gov.in)
-[![Category](https://img.shields.io/badge/Category-Software%20%7C%20Privacy%20AI-green.svg)]()
-[![Cybersecurity](https://img.shields.io/badge/Security-Zero--Trust%20Sandboxed-emerald.svg)]()
-[![Tests](https://img.shields.io/badge/Pytest-6%2F6%20Passing-brightgreen.svg)]()
+[![SIH 2026](https://img.shields.io/badge/SIH-2026-orange.svg?style=for-the-badge&logo=target)](https://sih.gov.in)
+[![Organization](https://img.shields.io/badge/ISRO-Indian%20Space%20Research%20Org-0052cc.svg?style=for-the-badge&logo=spacex)](https://www.isro.gov.in)
+[![Category](https://img.shields.io/badge/Category-Privacy%20AI%20%7C%20Vision%20Agents-10b981.svg?style=for-the-badge)]()
+[![Cybersecurity](https://img.shields.io/badge/Security-Zero--Trust%20Sandboxed-8b5cf6.svg?style=for-the-badge&logo=shield)]()
+[![Tests](https://img.shields.io/badge/Pytest-6%2F6%20Passing-38bdf8.svg?style=for-the-badge&logo=pytest)]()
 
 ---
 
-## 📌 1. Project Overview & Innovation
-Traditional agentic AI pipelines transmit raw screenshots and screen state directly to remote servers or cloud VLMs, leaking sensitive user data (passwords, Aadhaar, PAN cards, biometrics, financial info).
+## 🏛️ 1. 3D Layered System Architecture
 
-This system implements a **Zero-Trust On-Device Privacy Firewall** inside a Chrome Extension (Manifest V3) that enforces end-to-end data privacy before any network packet is dispatched:
+```
+   ┌────────────────────────────────────────────────────────────────────────────────────────┐
+  ╱                                                                                        ╱│
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐ │
+ │ 🌐 LAYER 1: CLIENT-SIDE VIEWPORT & DOM PERCEPTION (Local Browser)                     │ │
+ │                                                                                        │ │
+ │   ┌───────────────────────┐         ┌────────────────────────┐                         │ │
+ │   │  Active Browser Tab   │────────▶│ DOM Accessibility Tree │                         │ │
+ │   │  (Google, Portal, UI) │         │ (Filtered Nodes/Roles) │                         │ │
+ │   └──────────┬────────────┘         └───────────┬────────────┘                         │ │
+ └──────────────┼──────────────────────────────────┼──────────────────────────────────────┘ │
+   │            │ Tab Capture                      │ DOM Semantic Scan                      │
+   │            ▼                                  ▼                                        │
+   │ ┌────────────────────────────────────────────────────────────────────────────────────┐ │
+  ╱  │ 🔒 LAYER 2: ON-DEVICE PRIVACY FIREWALL (WebGPU Compute Engine)                    │╱│
+ ┌───┴────────────────────────────────────────────────────────────────────────────────────┴─┐
+ │                                                                                           │
+ │   ┌───────────────────┐     ┌─────────────────────┐     ┌─────────────────────────────┐   │
+ │   │ Layer 1: DOM Form │     │ Layer 2: Indian PII │     │ Layer 3: ML Vision Detector │   │
+ │   │  Input Attribute  │     │   Regex Matcher     │     │  Avatars, Photos, ID Cards  │   │
+ │   │ (Passwords, Card) │     │ (Aadhaar, PAN, Tel) │     │ (BlazeFace + YOLOv8n ONNX)  │   │
+ │   └─────────┬─────────┘     └──────────┬──────────┘     └──────────────┬──────────────┘   │
+ │             └──────────────────────────┼───────────────────────────────┘                  │
+ │                                        ▼                                                  │
+ │                ┌───────────────────────────────────────────────┐                          │
+ │                │   OffscreenCanvas Dynamic Redaction Engine    │                          │
+ │                │  (Blackout, Blur, Pixelate + +10% Dilation)   │                          │
+ │                └───────────────────────┬───────────────────────┘                          │
+ └────────────────────────────────────────┼──────────────────────────────────────────────────┘
+   │                                      │
+   │                                      │ Sanitized JPEG Frame + Semantic Injected Tokens
+   │                                      │ (Zero Raw PII Transmitted Across Network)
+   ▼                                      ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐
+ │ 🌐 LAYER 3: ENCRYPTED TRANSPORT & REPLAY PROTECTION (TLS 1.3 Tunnel)                  │
+ │                                                                                        │
+ │       [ Client Nonce: nonce_... ] ── WSS Frame ──▶ [ Unix Timestamp Freshness ]        │
+ └────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                          │
+                                          ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐
+ │ 🛡️ LAYER 4: ZERO-TRUST CYBERSECURITY SANDBOX (Server Gatekeeper)                       │
+ │                                                                                        │
+ │   ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐   │
+ │   │  Anti-Prompt Injection │  │  Token-Bucket Rate     │  │  Action Whitelist &    │   │
+ │   │  Adversarial Sanitizer │  │  Limiter (12 req / 6s) │  │  Protocol Blocklist    │   │
+ │   └────────────────────────┘  └────────────────────────┘  └────────────────────────┘   │
+ └────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                          │
+                                          ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐
+ │ 🧠 LAYER 5: MULTI-MODAL REASONING & VLM BRAIN (Cloud / Edge Inference)                 │
+ │                                                                                        │
+ │   ┌─────────────────────────────────────┐     ┌────────────────────────────────────┐   │
+ │   │ Vision-Language Reasoning           │     │ Universal Semantic Web Reasoner    │   │
+ │   │ (Qwen2.5-VL-7B / Groq Llama-3.2)    │ ◀─▶ │ (Intent Parser & DOM Scorer)       │   │
+ │   └──────────────────┬──────────────────┘     └─────────────────┬──────────────────┘   │
+ │                      └────────────────────────┬─────────────────┘                      │
+ │                                               ▼                                        │
+ │                        ┌─────────────────────────────────────────────┐                 │
+ │                        │    LangGraph ReAct Action Plan Generator    │                 │
+ │                        │  {"action":"click|type|fill_local|done"}    │                 │
+ │                        └──────────────────────┬──────────────────────┘                 │
+ └───────────────────────────────────────────────┼────────────────────────────────────────┘
+  │                                              │
+  │                                              │ ActionCommand JSON Sent Back
+  │                                              ▼
+  │  ┌────────────────────────────────────────────────────────────────────────────────────┐
+  └─▶│ ⚡ LAYER 6: CLIENT-SIDE LOCAL ACTUATION (Zero-Trust DOM Execution)                 │
+     │                                                                                    │
+     │  • fill_local: Reads credential from local chrome.storage (NEVER LEAVES DEVICE)    │
+     │  • Action Highlight: Visual target box & In-Page Floating Agent HUD                │
+     └────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📌 2. Project Overview & Problem Statement
+Traditional agentic AI pipelines transmit raw screenshots and screen state directly to remote servers or cloud VLMs, leaking sensitive user data (passwords, Aadhaar numbers, PAN cards, biometrics, financial info).
+
+This prototype implements an **On-Device Privacy Firewall** inside a Chrome Extension (Manifest V3):
 1. **On-Device Visual & DOM Perception:** Evaluates the live screen state locally using DOM input attribute scanners, Indian PII regex patterns, and Canvas visual models.
 2. **Context-Aware Visual Redaction:** Sensitive elements are redacted locally using **Blackout masks, Gaussian Blur, and Pixelation** with semantic placeholder tokens (e.g. `[PII_AADHAAR]`, `[PASSWORD_MASK]`, `[USER_AVATAR]`).
 3. **Structured VLM Reasoning:** Transmits *only* sanitized frames + structural accessibility trees over encrypted WebSockets to a central VLM (Qwen2.5-VL-7B / Groq Llama-3.2-Vision / Universal Web Reasoner).
@@ -21,70 +100,32 @@ This system implements a **Zero-Trust On-Device Privacy Firewall** inside a Chro
 
 ---
 
-## 🏛️ 2. Present System Design & Architecture
+## 🔒 3. Cybersecurity Defense Matrix
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   CLIENT SIDE (Browser Extension - MV3)                                │
-│                                                                                                        │
-│  ┌─────────────────────────┐      ┌─────────────────────────────────────────────────────────────────┐  │
-│  │   Active Browser Tab    │      │               On-Device Redaction Engine (Offscreen)            │  │
-│  │  (Google, Portal, Form) │      │                                                                 │  │
-│  └───────────┬─────────────┘      │  ┌───────────────┐   ┌────────────────┐   ┌──────────────────┐  │  │
-│              │                    │  │ Layer 1: DOM  │   │ Layer 2: Regex │   │ Layer 3: Vision  │  │  │
-│              │ Tab Capture        │  │ Input Scanner │   │ PII Matcher    │   │ Avatars/Cards    │  │  │
-│              ▼                    │  └───────┬───────┘   └────────┬───────┘   └────────┬─────────┘  │  │
-│  ┌─────────────────────────┐      │          └────────────────────┼────────────────────┘            │  │
-│  │  Service Worker Router  │─────▶│                               ▼                                 │  │
-│  │  (Auto-Nav & Injection) │      │               Canvas Privacy Redactor & Token Ingestion         │  │
-│  └───────────▲─────────────┘      │          (Blackout, Blur, Pixelation with +10% Dilation)        │  │
-│              │                    └───────────────────────────────┬─────────────────────────────────┘  │
-│              │ Action Execution                                   │                                    │
-│  ┌───────────┴─────────────┐                                      ▼                                    │
-│  │  Content Action Runner  │◀────────────────────────── Sanitized Frame                              │
-│  │ (Target Highlight & HUD)│                           & Structural Graph                              │
-│  └─────────────────────────┘                                      │                                    │
-└───────────────────────────────────────────────────────────────────┼────────────────────────────────────┘
-                                                                    │
-                                    Encrypted WebSocket (TLS 1.3)   │ Payload with Cryptographic Nonce
-                                                                    ▼
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                       SERVER SIDE (FastAPI & VLM Gateway)                              │
-│                                                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                                  CYBERSECURITY DEFENSE LAYER                                     │  │
-│  │  • Anti-Prompt Injection Filter     • Replay & Timestamp Validator     • Token-Bucket Rate Limiter│  │
-│  │  • Dangerous Protocol Blocker       • Destructive Action Guardrail     • Zero-Trust Key Whitelist │  │
-│  └──────────────────────────────────────────────────┬───────────────────────────────────────────────┘  │
-│                                                     ▼                                                  │
-│  ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐  │
-│  │                                       REASONING & VLM ENGINE                                     │  │
-│  │                                                                                                  │  │
-│  │  ┌───────────────────────────────────┐               ┌────────────────────────────────────────┐  │  │
-│  │  │ Cloud / Local VLM Inference       │  ◀────OR────▶ │ Universal Semantic Web Reasoner        │  │  │
-│  │  │ (Qwen2.5-VL-7B / Groq Llama-3.2)  │               │ (Deterministic Intent & DOM Matcher)   │  │  │
-│  │  └─────────────────┬─────────────────┘               └───────────────────┬────────────────────┘  │  │
-│  │                    └─────────────────────────┬───────────────────────────┘                       │  │
-│  │                                              ▼                                                   │  │
-│  │                               LangGraph ReAct Action Generator                                   │  │
-│  │                             (click, type, fill_local, scroll, done)                              │  │
-│  └──────────────────────────────────────────────┬───────────────────────────────────────────────────┘  │
-│                                                 │                                                      │
-└─────────────────────────────────────────────────┼──────────────────────────────────────────────────────┘
-                                                  │ ActionCommand JSON
-                                                  ▼
-                                      (Executed on Client DOM)
+       ┌──────────────────┐
+       │ Adversarial Web  │─── Attempt Prompt Injection ───┐
+       │    Page Input    │                                │
+       └──────────────────┘                                ▼
+                                                ┌─────────────────────┐
+                                                │   SecurityGuard     │──▶ Neutralize Payload:
+                                                │ Sanitizer & Sandbox │    [SANITIZED_CONTENT]
+                                                └──────────┬──────────┘
+                                                           │
+                                ┌──────────────────────────┴──────────────────────────┐
+                                ▼                                                     ▼
+                     ┌──────────────────────┐                              ┌──────────────────────┐
+                     │  Protocol Blocklist  │                              │ Destructive Action   │
+                     │  Blocks javascript:, │                              │ Interceptor (delete, │
+                     │  data:, file:, etc.  │                              │ format, reset)       │
+                     └──────────────────────┘                              └──────────────────────┘
 ```
-
----
-
-## 🔒 3. Essential Cybersecurity Features
 
 | Security Vector | Implementation Detail | Protection Guarantee |
 |---|---|---|
 | **1. Anti-Prompt Injection** | `SecurityGuard.sanitize_accessibility_tree()` | Statically inspects and neutralizes adversarial text (e.g. `Ignore previous instructions`, `system:`) embedded inside untrusted web pages before prompting the VLM. |
 | **2. Action Sandbox & Protocol Filter** | `SecurityGuard.validate_outgoing_action()` | Blocks dangerous navigation schemes (`javascript:`, `data:`, `file:`, `chrome:`, `vbscript:`). Validates selectors and commands against a strict whitelist. |
-| **3. Destructive Action Guardrail** | Keyword pattern matcher | Prevents unauthorized execution of irreversible actions (e.g. `delete account`, `format`, `erase all data`) without manual user confirmation. |
+| **3. Destructive Action Interceptor** | Keyword pattern matcher | Prevents unauthorized execution of irreversible actions (e.g. `delete account`, `format`, `erase all data`) without manual user confirmation. |
 | **4. Anti-Replay & Timestamp Freshness** | Cryptographic Nonce + Epoch Verification | Verifies per-frame random nonces (`nonce_...`) and drops stale or intercepted frames (`>35s` drift). |
 | **5. Anti-DoS Rate Limiter** | Token-bucket per client | Caps requests at **12 requests / 6 seconds** to protect against runaway client loops and server flooding. |
 | **6. Zero-Trust Local Vault (`fill_local`)** | Whitelisted vault keys | Sensitive credentials (Aadhaar, PAN, email, phone) are stored locally in `chrome.storage.local`. Server instructs *which* field to fill; **actual values never touch the network**. |
@@ -98,7 +139,7 @@ This system implements a **Zero-Trust On-Device Privacy Firewall** inside a Chro
 ```
 d:\Projects\SIH\
 ├── .gitignore                       # Git exclusion rules (protects .env, keys, caches)
-├── README.md                        # Complete documentation & system design
+├── README.md                        # Complete documentation & 3D system design
 ├── SIH_2026_PS26171_Implementation_Plan.pdf # 5-page Technical Blueprint PDF
 ├── extension/                       # Chrome Extension (Manifest V3)
 │   ├── manifest.json                # MV3 config with activeTab & offscreen permissions
@@ -145,7 +186,7 @@ d:\Projects\SIH\
 
 ---
 
-## 🚀 5. Quickstart & Step-by-Step Setup
+## 🚀 5. Quickstart & Live Demo Instructions
 
 ### Step 1: Install Python Dependencies
 ```powershell
