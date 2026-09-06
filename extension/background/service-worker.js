@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Background Service Worker: Robust Multi-Page Navigation, Auto-Retry Injection & Agent Orchestration
+ * Background Service Worker: Universal Intent Routing, Multi-Page Navigation & Privacy Pipeline
  */
 
 importScripts('../lib/pii-regex.js', '../lib/payload-builder.js');
@@ -14,47 +14,46 @@ let maxIterations = 10;
 let previousActions = [];
 let serverUrl = 'ws://127.0.0.1:8000/ws';
 
-// ── 1. Smart URL & Domain Resolver ──
-
-const POPULAR_DOMAINS = {
-  sih: 'https://sih.gov.in',
-  'smart india hackathon': 'https://sih.gov.in',
-  isro: 'https://www.isro.gov.in',
-  leetcode: 'https://leetcode.com',
-  github: 'https://github.com',
-  google: 'https://www.google.com',
-  wikipedia: 'https://www.wikipedia.org',
-  youtube: 'https://www.youtube.com',
-  amazon: 'https://www.amazon.in',
-  makemytrip: 'https://www.makemytrip.com',
-  irctc: 'https://www.irctc.co.in',
-  reddit: 'https://www.reddit.com',
-  demo: 'http://127.0.0.1:8000/demo/index.html',
-  citizen: 'http://127.0.0.1:8000/demo/index.html',
-  flight: 'http://127.0.0.1:8000/demo/index.html'
-};
+// ── 1. Smart Universal Search & Deep-Link Resolver ──
 
 function resolveTargetUrlFromGoal(goal) {
   const g = goal.toLowerCase().trim();
 
-  // Check explicit full URL
+  // 1. Explicit URL check
   const urlMatch = goal.match(/https?:\/\/[^\s]+/i);
   if (urlMatch) return urlMatch[0];
 
-  // Check mapped domains
-  for (const [key, domainUrl] of Object.entries(POPULAR_DOMAINS)) {
-    if (g.includes(key)) {
-      return domainUrl;
-    }
+  // 2. Demo portal shortcuts
+  if (g.includes('citizen') || g.includes('flight booking') || g.includes('testbed') || g === 'demo') {
+    return 'http://127.0.0.1:8000/demo/index.html';
   }
 
-  // Fallback to Google Search
-  const searchMatch = goal.match(/(?:search|find|lookup|for|open|go to)\s+(?:for\s+)?["']?([^"']+)["']?/i);
-  const query = searchMatch ? searchMatch[1].trim() : goal.trim();
-  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  // 3. Pure single-word root domain check (e.g. "open leetcode", "go to youtube", "visit github")
+  const pureDomainMatch = g.match(/^(?:open|go to|visit|launch)\s+([a-z0-9]+)(?:\.com|\.org|\.in)?$/i);
+  if (pureDomainMatch) {
+    const domainName = pureDomainMatch[1].toLowerCase();
+    const common = {
+      leetcode: 'https://leetcode.com',
+      github: 'https://github.com',
+      google: 'https://www.google.com',
+      wikipedia: 'https://www.wikipedia.org',
+      youtube: 'https://www.youtube.com',
+      sih: 'https://sih.gov.in',
+      isro: 'https://www.isro.gov.in'
+    };
+    if (common[domainName]) return common[domainName];
+  }
+
+  // 4. Universal Web Discovery: For ANY specific query (e.g. "open four sum problem on leetcode", "search shoes on amazon")
+  // Clean command filler words
+  const cleanQuery = goal
+    .replace(/^(?:please\s+)?(?:open|search|find|lookup|look for|go to|navigate to)\s+/i, '')
+    .trim();
+
+  return `https://www.google.com/search?q=${encodeURIComponent(cleanQuery || goal)}`;
 }
 
-// ── 2. Robust Tab Readiness & Content Script Injection with Retries ──
+// ── 2. Robust Tab Readiness & Injection Helpers ──
 
 async function waitForTabReady(tabId, maxWaitMs = 10000) {
   const startTime = Date.now();
@@ -62,13 +61,10 @@ async function waitForTabReady(tabId, maxWaitMs = 10000) {
     try {
       const tab = await chrome.tabs.get(tabId);
       if (tab.status === 'complete') {
-        // Small settle buffer for dynamic SPA frameworks (React/Vue)
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 400));
         return true;
       }
-    } catch (e) {
-      // Tab may be reloading
-    }
+    } catch (e) {}
     await new Promise(r => setTimeout(r, 200));
   }
   return true;
@@ -82,7 +78,7 @@ async function ensureContentScriptInjectedWithRetry(tabId, retries = 4) {
       const ping = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
       if (ping && ping.success) return ping;
     } catch (e) {
-      console.log(`[Service Worker] Injecting content scripts into Tab ${tabId} (Attempt ${attempt}/${retries})...`);
+      console.log(`[Service Worker] Injecting scripts into Tab ${tabId} (Attempt ${attempt}/${retries})...`);
       try {
         await chrome.scripting.executeScript({
           target: { tabId: tabId },
@@ -95,11 +91,9 @@ async function ensureContentScriptInjectedWithRetry(tabId, retries = 4) {
         });
         await new Promise(r => setTimeout(r, 300 * attempt));
         
-        // Test connection after injection
         const check = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
         if (check && check.success) return check;
       } catch (injectErr) {
-        console.warn(`[Service Worker] Injection attempt ${attempt} warning:`, injectErr.message);
         if (attempt === retries) {
           throw new Error(`Cannot attach agent to this page (${injectErr.message}).`);
         }
@@ -278,7 +272,6 @@ async function runAgentStep(tabId) {
         command: actionCommand
       });
     } catch (execErr) {
-      // If action caused page unload (e.g. navigation / link click), handle smoothly
       console.log('[Agent Loop] Action triggered page transition:', execErr.message);
       executionResult = { success: true, pageTransition: true };
     }
@@ -295,7 +288,7 @@ async function runAgentStep(tabId) {
       return;
     }
 
-    // If action was a navigation or click on link, wait for new page to load
+    // If action was a navigation or link click, wait for new page to settle
     if (actionCommand.action === 'navigate' || executionResult?.pageTransition) {
       await waitForTabReady(tabId, 6000);
     }
@@ -351,19 +344,16 @@ async function startAgentLoop(goal, tabId, tabUrl = '') {
   previousActions = [];
   connectWebSocket();
 
-  // Check if active tab is a browser internal page or user requested a specific destination
+  // Check if active tab is internal or user is starting a fresh search from newtab
   const isInternal = !tabUrl || 
                      tabUrl.startsWith('chrome://') || 
                      tabUrl.startsWith('chrome-extension://') || 
                      tabUrl.startsWith('edge://') || 
                      tabUrl.startsWith('about:');
 
-  const gLower = goal.toLowerCase();
-  const directTarget = Object.keys(POPULAR_DOMAINS).find(k => gLower.includes(k) && (gLower.includes('open') || gLower.includes('go to') || gLower.includes('visit')));
-
-  if (isInternal || directTarget) {
+  if (isInternal) {
     const targetUrl = resolveTargetUrlFromGoal(goal);
-    console.log(`[Service Worker] Navigating Tab ${tabId} directly to ${targetUrl}...`);
+    console.log(`[Service Worker] New tab detected. Auto-navigating Tab ${tabId} to ${targetUrl}...`);
     broadcastToPopup({
       type: 'AGENT_STEP_START',
       iteration: 1,

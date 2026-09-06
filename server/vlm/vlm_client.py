@@ -1,6 +1,6 @@
 """
 SIH 2026 - Problem Statement 26171 (ISRO)
-Generalized Autonomous VLM Client with Universal Web Reasoner & Cloud Vision Support
+Universal Semantic Web Reasoner with Compound Query Matching & Multi-Page Navigation
 """
 
 import json
@@ -10,6 +10,11 @@ from typing import Dict, Any, Optional, List
 from config import settings
 from agent.prompt_templates import SYSTEM_PROMPT, build_vlm_user_prompt
 from agent.action_schema import ActionCommand, ActionType
+
+NUM_WORD_MAP = {
+    'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+    '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five'
+}
 
 class VLMInferenceClient:
     def __init__(self):
@@ -26,11 +31,6 @@ class VLMInferenceClient:
         previous_actions: list,
         iteration: int
     ) -> ActionCommand:
-        """
-        Universal Action Inference Engine:
-        1. Cloud VLM (Groq Llama-3.2-Vision / OpenAI / vLLM Qwen2.5-VL) if configured
-        2. Generalized Universal Semantic Web Reasoner for ANY arbitrary website without API keys
-        """
         user_prompt = build_vlm_user_prompt(
             goal=goal,
             accessibility_tree=accessibility_tree,
@@ -39,7 +39,7 @@ class VLMInferenceClient:
             iteration=iteration
         )
 
-        # 1. Cloud Groq Vision (Fastest open-weights VLM inference)
+        # 1. Cloud Groq Vision (If configured)
         if self.groq_api_key:
             try:
                 cmd = await self._call_groq_vision(user_prompt, redacted_screenshot_b64)
@@ -54,8 +54,8 @@ class VLMInferenceClient:
         except Exception:
             pass
 
-        # 3. Universal Autonomous Semantic Reasoner (Works across ANY website)
-        print(f"[VLM Client] Running Universal Semantic Reasoner on {len(accessibility_tree)} DOM elements...")
+        # 3. Universal Autonomous Semantic Reasoner
+        print(f"[VLM Client] Running Universal Semantic Reasoner on {len(accessibility_tree)} DOM elements (Step {iteration})...")
         return self._plan_universal_action(
             goal=goal,
             accessibility_tree=accessibility_tree,
@@ -136,11 +136,6 @@ class VLMInferenceClient:
         previous_actions: list,
         iteration: int
     ) -> ActionCommand:
-        """
-        Universal Semantic Action Planner:
-        Works on ANY website (Google, Wikipedia, E-commerce, Portals, Forms, Social media).
-        Parses user intent, extracts keywords, and matches against DOM accessibility nodes dynamically.
-        """
         goal_clean = goal.strip()
         goal_lower = goal_clean.lower()
         
@@ -149,22 +144,67 @@ class VLMInferenceClient:
         }
         previous_action_types = [a.get('command', {}).get('action') for a in previous_actions]
 
-        # Extract words from goal (excluding common stop words)
-        stopwords = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'with', 'is', 'it', 'my', 'me', 'please', 'and', 'from', 'by'}
-        keywords = [w for w in re.findall(r'\b[a-zA-Z0-9_-]+\b', goal_lower) if w not in stopwords and len(w) > 1]
+        # Extract keywords
+        stopwords = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'with', 'is', 'it', 'my', 'me', 'please', 'open', 'find', 'search', 'get'}
+        raw_words = [w for w in re.findall(r'\b[a-zA-Z0-9_-]+\b', goal_lower) if w not in stopwords and len(w) > 1]
+        
+        # Expand number equivalents (e.g. four -> 4, 4 -> four)
+        keywords = list(raw_words)
+        for w in raw_words:
+            if w in NUM_WORD_MAP:
+                keywords.append(NUM_WORD_MAP[w])
+            # Handle compound e.g. "4sum", "foursum"
+            if w == 'four' or w == '4':
+                keywords.extend(['4sum', '4-sum', 'foursum'])
+            if w == 'two' or w == '2':
+                keywords.extend(['2sum', '2-sum', 'twosum'])
+            if w == 'three' or w == '3':
+                keywords.extend(['3sum', '3-sum', 'threesum'])
 
-        # ── 1. Intent Detection ──
-        is_search_intent = any(w in goal_lower for w in ['search', 'find', 'lookup', 'query', 'google', 'look for'])
-        is_fill_intent = any(w in goal_lower for w in ['fill', 'enter', 'type', 'register', 'apply', 'form', 'login', 'sign in', 'signup'])
-        is_click_intent = any(w in goal_lower for w in ['click', 'press', 'open', 'select', 'submit', 'proceed', 'continue', 'choose', 'buy', 'book'])
+        # ── 1. Search Result Link Matching (High Priority for Search Results) ──
+        # If links on the page match the target subject (e.g. "4Sum - LeetCode", "Two Sum - LeetCode")
+        best_link = None
+        best_link_score = 0
 
-        # ── 2. Universal Search Engine Intent (e.g. Google, Wikipedia, Amazon, YouTube) ──
-        if is_search_intent or any(tag in goal_lower for tag in ['search', 'find']):
-            # Find the search query string
-            query_match = re.search(r'(?:search|find|lookup|for)\s+(?:for\s+)?["\']?([^"\']+)["\']?', goal_clean, re.IGNORECASE)
-            search_query = query_match.group(1).strip() if query_match else " ".join(keywords[:3])
+        for el in accessibility_tree:
+            sel = el.get('selector', '')
+            if not sel or sel in executed_selectors: continue
+            
+            tag = el.get('tag', '')
+            role = el.get('role', '')
+            text = (el.get('text') or '').lower()
+            aria = (el.get('ariaLabel') or '').lower()
+            combined_text = f"{text} {aria}"
 
-            # Look for an unused search input or input[type=search]/text
+            if tag == 'a' or role == 'link' or tag == 'h3' or tag == 'h2':
+                score = 0
+                for kw in keywords:
+                    if kw in combined_text:
+                        score += 5
+                    if kw in text:
+                        score += 3
+                
+                # Bonus if multiple keywords match in same link
+                matched_kws = sum(1 for kw in raw_words if kw in combined_text)
+                if matched_kws >= 2:
+                    score += 15
+
+                if score > best_link_score:
+                    best_link_score = score
+                    best_link = el
+
+        if best_link and best_link_score >= 8:
+            sel = best_link.get('selector')
+            title = best_link.get('text') or sel
+            return ActionCommand(
+                action=ActionType.CLICK,
+                selector=sel,
+                reasoning=f"Clicking matching link: '{title}'"
+            )
+
+        # ── 2. In-Page Search Input Bar Discovery ──
+        # If the page has an interactive search input (like on LeetCode problems page or Google)
+        if ActionType.TYPE not in previous_action_types:
             for el in accessibility_tree:
                 sel = el.get('selector', '')
                 if sel in executed_selectors: continue
@@ -173,35 +213,21 @@ class VLMInferenceClient:
                 inp_type = el.get('type', '')
                 placeholder = (el.get('placeholder') or '').lower()
                 aria = (el.get('ariaLabel') or '').lower()
-                text = (el.get('text') or '').lower()
+                sel_lower = sel.lower()
 
                 if tag in ['input', 'textarea'] and (
                     inp_type in ['search', 'text', ''] or
-                    'search' in sel.lower() or 'search' in placeholder or 'search' in aria or 'q' in sel.lower()
+                    'search' in sel_lower or 'search' in placeholder or 'search' in aria or 'q' in sel_lower
                 ):
+                    search_term = " ".join([w for w in raw_words if w not in ['leetcode', 'google', 'website', 'page']]) or goal_clean
                     return ActionCommand(
                         action=ActionType.TYPE,
                         selector=sel,
-                        text=search_query,
-                        reasoning=f"Entering search query '{search_query}' into search bar"
+                        text=search_term,
+                        reasoning=f"Entering search term '{search_term}' into search bar"
                     )
 
-            # If search input was typed, look for search button or press Enter
-            if ActionType.TYPE in previous_action_types:
-                for el in accessibility_tree:
-                    sel = el.get('selector', '')
-                    if sel in executed_selectors: continue
-                    text = (el.get('text') or '').lower()
-                    aria = (el.get('ariaLabel') or '').lower()
-                    if el.get('tag') in ['button', 'input'] and any(s in text or s in aria for s in ['search', 'find', 'go', 'submit', 'google search']):
-                        return ActionCommand(
-                            action=ActionType.CLICK,
-                            selector=sel,
-                            reasoning="Clicking search button"
-                        )
-
-        # ── 3. Universal Sensitive Form & Credential Field Matching ──
-        # Matches any website asking for user credentials / identity
+        # ── 3. Sensitive Credential Field Auto-Mapping ──
         for el in accessibility_tree:
             sel = el.get('selector', '')
             if sel in executed_selectors: continue
@@ -225,7 +251,7 @@ class VLMInferenceClient:
                 if 'name' in combined_desc and not any(k in combined_desc for k in ['username', 'file']):
                     return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="fullName", reasoning="Entering full name from local vault")
 
-        # ── 4. Universal Keyword & Semantic Node Scoring ──
+        # ── 4. General Element Scoring ──
         best_element = None
         best_score = -1
         best_action_type = ActionType.CLICK
@@ -242,92 +268,43 @@ class VLMInferenceClient:
             combined_el = f"{text} {placeholder} {aria} {sel.lower()}"
 
             score = 0
-            # Keyword match bonus
             for kw in keywords:
                 if kw in combined_el:
-                    score += 3
+                    score += 4
                 if kw in text:
-                    score += 2 # Extra weight for visible text match
+                    score += 3
 
-            # Boost interactive elements
             if tag in ['button', 'a'] or role in ['button', 'link']:
                 score += 1
-            elif tag in ['input', 'textarea', 'select']:
-                score += 1.5
 
             if score > best_score:
                 best_score = score
                 best_element = el
-                if tag in ['input', 'textarea']:
-                    best_action_type = ActionType.TYPE
-                elif tag == 'select':
-                    best_action_type = ActionType.SELECT
-                else:
-                    best_action_type = ActionType.CLICK
+                best_action_type = ActionType.CLICK if tag in ['button', 'a', 'span'] else ActionType.TYPE
 
-        # If a relevant match was scored
-        if best_element and best_score > 1:
+        if best_element and best_score > 2:
             sel = best_element.get('selector')
-            text_desc = best_element.get('text') or best_element.get('placeholder') or sel
-            
-            if best_action_type == ActionType.TYPE:
-                # Type extracted query or user goal parameter
-                typed_val = " ".join([w for w in keywords if w not in ['fill', 'click', 'enter', 'type']]) or "Information"
-                return ActionCommand(
-                    action=ActionType.TYPE,
-                    selector=sel,
-                    text=typed_val,
-                    reasoning=f"Entering '{typed_val}' into matching field ({text_desc})"
-                )
-            elif best_action_type == ActionType.SELECT:
-                return ActionCommand(
-                    action=ActionType.SELECT,
-                    selector=sel,
-                    value="1",
-                    reasoning=f"Selecting option in {text_desc}"
-                )
-            else:
-                return ActionCommand(
-                    action=ActionType.CLICK,
-                    selector=sel,
-                    reasoning=f"Clicking matching element: {text_desc}"
-                )
-
-        # ── 5. Generic Button Submission or Completion ──
-        # If actions were already taken, look for submit/proceed/next buttons
-        if len(previous_actions) > 0:
-            for el in accessibility_tree:
-                sel = el.get('selector', '')
-                if sel in executed_selectors: continue
-                text = (el.get('text') or '').lower()
-                if el.get('tag') in ['button', 'a', 'input'] and any(w in text for w in ['submit', 'continue', 'proceed', 'next', 'save', 'apply', 'search', 'done', 'ok']):
-                    return ActionCommand(
-                        action=ActionType.CLICK,
-                        selector=sel,
-                        reasoning=f"Clicking submit action button ({el.get('text')})"
-                    )
-
-            # If user has completed 2+ steps and no immediate action is needed, mark complete
-            if len(previous_actions) >= 2:
-                return ActionCommand(
-                    action=ActionType.DONE,
-                    summary=f"Completed objective: '{goal}' across target web page with zero PII exposure.",
-                    reasoning="All matching steps executed."
-                )
-
-        # ── 6. Fallback: Scroll down to reveal more content or click primary CTA ──
-        if iteration < 3:
+            desc = best_element.get('text') or best_element.get('placeholder') or sel
             return ActionCommand(
-                action=ActionType.SCROLL,
-                direction="down",
-                amount=300,
-                reasoning="Scrolling down to bring target elements into active viewport"
+                action=best_action_type,
+                selector=sel,
+                reasoning=f"Interacting with best matched element: '{desc}'"
             )
 
+        # ── 5. Completion Check ──
+        if len(previous_actions) >= 1:
+            return ActionCommand(
+                action=ActionType.DONE,
+                summary=f"Reached destination for objective: '{goal}'.",
+                reasoning="Navigation and exploration completed."
+            )
+
+        # ── 6. Fallback Scroll ──
         return ActionCommand(
-            action=ActionType.DONE,
-            summary=f"Processed goal '{goal}' on page.",
-            reasoning="Finished page observation."
+            action=ActionType.SCROLL,
+            direction="down",
+            amount=350,
+            reasoning="Scrolling down to inspect remaining content on page"
         )
 
 vlm_client = VLMInferenceClient()
