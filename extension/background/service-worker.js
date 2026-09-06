@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Background Service Worker: Orchestrates Capture, Dynamic Injection, Offscreen Redaction & WebSockets
+ * Background Service Worker: Orchestrates Capture, Auto-Navigation, Dynamic Injection & WebSockets
  */
 
 importScripts('../lib/pii-regex.js', '../lib/payload-builder.js');
@@ -14,14 +14,50 @@ let maxIterations = 10;
 let previousActions = [];
 let serverUrl = 'ws://127.0.0.1:8000/ws';
 
-// ── 1. Dynamic Content Script Injection Helper ──
+// ── 1. Smart URL Resolver for Internal / New Tab Pages ──
+
+const POPULAR_DOMAINS = {
+  leetcode: 'https://leetcode.com',
+  github: 'https://github.com',
+  google: 'https://www.google.com',
+  wikipedia: 'https://www.wikipedia.org',
+  youtube: 'https://www.youtube.com',
+  amazon: 'https://www.amazon.in',
+  makemytrip: 'https://www.makemytrip.com',
+  irctc: 'https://www.irctc.co.in',
+  reddit: 'https://www.reddit.com',
+  demo: 'http://127.0.0.1:8000/demo/index.html',
+  citizen: 'http://127.0.0.1:8000/demo/index.html',
+  flight: 'http://127.0.0.1:8000/demo/index.html'
+};
+
+function resolveTargetUrlFromGoal(goal) {
+  const g = goal.toLowerCase().trim();
+
+  // Check if explicit URL is in the goal
+  const urlMatch = goal.match(/https?:\/\/[^\s]+/i);
+  if (urlMatch) return urlMatch[0];
+
+  // Check popular domains mentioned in goal
+  for (const [key, domainUrl] of Object.entries(POPULAR_DOMAINS)) {
+    if (g.includes(key)) {
+      return domainUrl;
+    }
+  }
+
+  // Extract search term or fallback to Google Search
+  const searchMatch = goal.match(/(?:search|find|lookup|for|open|go to)\s+(?:for\s+)?["']?([^"']+)["']?/i);
+  const query = searchMatch ? searchMatch[1].trim() : goal.trim();
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}
+
+// ── 2. Dynamic Content Script Injection Helper ──
 
 async function ensureContentScriptInjected(tabId) {
   try {
     const ping = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
     if (ping && ping.success) return true;
   } catch (e) {
-    // Content script not yet injected into this tab, inject dynamically
     console.log(`[Service Worker] Injecting content scripts into Tab ${tabId}...`);
     try {
       await chrome.scripting.executeScript({
@@ -33,18 +69,17 @@ async function ensureContentScriptInjected(tabId) {
           'content/content-bridge.js'
         ]
       });
-      // Short pause to let scripts initialize
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 250));
       return true;
     } catch (injectErr) {
-      console.error('[Service Worker] Failed to dynamically inject content scripts:', injectErr);
-      throw new Error(`Cannot access this tab (${injectErr.message}). If this is a chrome:// or new tab page, please navigate to a standard website first.`);
+      console.error('[Service Worker] Failed to inject content scripts:', injectErr);
+      throw new Error(`Cannot access this tab (${injectErr.message}).`);
     }
   }
   return true;
 }
 
-// ── 2. Offscreen Document Lifecycle ──
+// ── 3. Offscreen Document Lifecycle ──
 
 async function ensureOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL('offscreen/offscreen.html');
@@ -63,7 +98,7 @@ async function ensureOffscreenDocument() {
   console.log('[Service Worker] Offscreen document spawned.');
 }
 
-// ── 3. WebSocket Connection Manager ──
+// ── 4. WebSocket Connection Manager ──
 
 function connectWebSocket(url = serverUrl) {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -112,7 +147,7 @@ function broadcastToPopup(data) {
   chrome.runtime.sendMessage(data).catch(() => {});
 }
 
-// ── 4. Single Step: Capture → Sanitize → Transmit → Execute ──
+// ── 5. Single Step: Capture → Sanitize → Transmit → Execute ──
 
 async function runAgentStep(tabId) {
   if (!isLoopRunning) return;
@@ -239,7 +274,7 @@ async function runAgentStep(tabId) {
   }
 }
 
-// ── 5. Server Action Promise Resolver ──
+// ── 6. Server Action Promise Resolver ──
 
 let pendingActionResolver = null;
 let pendingActionRejecter = null;
@@ -267,15 +302,59 @@ function handleServerMessage(message) {
   }
 }
 
-// ── 6. Agent Control Functions ──
+// ── 7. Agent Control Functions with Auto-Navigation ──
 
-function startAgentLoop(goal, tabId) {
+async function startAgentLoop(goal, tabId, tabUrl = '') {
   isLoopRunning = true;
   currentGoal = goal;
   currentIteration = 0;
   previousActions = [];
-  console.log(`[Agent] Starting loop for goal: "${goal}" on Tab ${tabId}`);
   connectWebSocket();
+
+  // Check if active tab is a browser internal / newtab page
+  const isInternal = !tabUrl || 
+                     tabUrl.startsWith('chrome://') || 
+                     tabUrl.startsWith('chrome-extension://') || 
+                     tabUrl.startsWith('edge://') || 
+                     tabUrl.startsWith('about:');
+
+  if (isInternal) {
+    const targetUrl = resolveTargetUrlFromGoal(goal);
+    console.log(`[Service Worker] Internal page detected. Auto-navigating Tab ${tabId} to ${targetUrl}...`);
+    broadcastToPopup({
+      type: 'AGENT_STEP_START',
+      iteration: 1,
+      goal: `Navigating to ${targetUrl}...`
+    });
+
+    // Navigate the tab
+    await chrome.tabs.update(tabId, { url: targetUrl });
+
+    // Wait for the tab to finish loading
+    const onTabUpdated = (updatedTabId, changeInfo) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(onTabUpdated);
+        console.log(`[Service Worker] Tab ${tabId} finished loading. Starting perception loop...`);
+        setTimeout(() => {
+          runAgentStep(tabId);
+        }, 1000); // 1s buffer for full DOM readiness
+      }
+    };
+    chrome.tabs.onUpdated.addListener(onTabUpdated);
+
+    // Timeout safety fallback (5s)
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(onTabUpdated);
+      if (isLoopRunning && currentIteration === 0) {
+        runAgentStep(tabId);
+      }
+    }, 5000);
+
+    return;
+  }
+
+  // Normal live web page
+  console.log(`[Agent] Starting loop for goal: "${goal}" on Tab ${tabId}`);
   runAgentStep(tabId);
 }
 
@@ -285,18 +364,14 @@ function stopAgentLoop(reason = 'User stopped') {
   broadcastToPopup({ type: 'AGENT_STOPPED', reason });
 }
 
-// ── 7. Message Listener from Popup / Options ──
+// ── 8. Message Listener from Popup ──
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'START_AGENT') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0) {
         const activeTab = tabs[0];
-        if (activeTab.url && (activeTab.url.startsWith('chrome://') || activeTab.url.startsWith('chrome-extension://') || activeTab.url.startsWith('edge://'))) {
-          sendResponse({ success: false, error: 'Cannot run agent on browser internal pages. Please open a regular website.' });
-          return;
-        }
-        startAgentLoop(request.goal, activeTab.id);
+        startAgentLoop(request.goal, activeTab.id, activeTab.url || '');
         sendResponse({ success: true, status: 'STARTED' });
       } else {
         sendResponse({ success: false, error: 'No active tab found' });
