@@ -38,3 +38,24 @@ function selectFlight(flightCode) {
   confirmBox.innerHTML = `🎉 <strong>Flight Confirmed!</strong> Seat successfully reserved on <strong>${flightCode}</strong> with Zero PII leakage.`;
   confirmBox.scrollIntoView({ behavior: 'smooth' });
 }
+
+// Health Form Submit
+function submitHealthForm() {
+  const successBox = document.getElementById('healthSuccessMessage');
+  successBox.style.display = 'block';
+  successBox.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Banking Form Submit
+function submitBankingForm() {
+  const successBox = document.getElementById('bankingSuccessMessage');
+  successBox.style.display = 'block';
+  successBox.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ISRO Grant Form Submit
+function submitIsroGrantForm() {
+  const successBox = document.getElementById('isroGrantSuccessMessage');
+  successBox.style.display = 'block';
+  successBox.scrollIntoView({ behavior: 'smooth' });
+}

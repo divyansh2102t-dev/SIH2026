@@ -17,7 +17,10 @@
     </div>
     <div class="nav-tabs">
       <button class="nav-tab active" data-tab="citizenTab">📝 Citizen Verification</button>
-      <button class="nav-tab" data-tab="flightTab">✈️ VimanYatra Flight Booking</button>
+      <button class="nav-tab" data-tab="flightTab">✈️ Flight Booking</button>
+      <button class="nav-tab" data-tab="healthTab">🏥 Health Records</button>
+      <button class="nav-tab" data-tab="bankingTab">🏦 Digital Banking</button>
+      <button class="nav-tab" data-tab="isroGrantTab">🛰️ ISRO Grant</button>
     </div>
     <div class="nav-user">
       <div class="avatar-box">
@@ -35,7 +38,7 @@
     <div class="privacy-notice">
       <span class="shield-icon">🛡️</span>
       <div>
-        <strong>Privacy Testbed Active:</strong> This portal contains realistic PII (Aadhaar, PAN, Phone, Email, Avatars, Cards). The ISRO on-device vision agent will redact these locally before transmitting to the server VLM.
+        <strong>Multi-Domain Privacy Testbed Active:</strong> This sandbox contains realistic multi-domain PII (Aadhaar, PAN, Health ABHA, Banking Cards, IFSC, Phone, Avatars, ID Badges). The on-device agent masks all sensitive fields locally before transmission to server VLM.
       </div>
     </div>
 
@@ -82,9 +85,9 @@
             </select>
           </div>
 
-          <!-- Uploaded ID Card Preview (for Visual Model Redaction Testing) -->
+          <!-- Uploaded ID Card Preview -->
           <div class="form-group full-width">
-            <label>Government ID Proof Preview (Visual Testbed)</label>
+            <label>Government ID Proof Preview (Visual Model Redaction Testing)</label>
             <div class="id-card-preview">
               <div class="id-card-badge">
                 <div class="id-chip">💳</div>
@@ -162,6 +165,233 @@
 
         <div id="flightBookingConfirmed" class="success-banner" style="display: none; margin-top: 15px;">
           🎉 <strong>Flight Confirmed!</strong> Seat reserved on Flight AB-402 (DEL ➔ BOM) for Sep 15, 2026.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Ayushman Digital Health & Telemedicine Portal -->
+    <div id="healthTab" class="tab-content">
+      <div class="portal-card">
+        <div class="card-header">
+          <h2>🏥 Ayushman Digital Health &amp; Telemedicine Portal</h2>
+          <p>Confidential Medical Records &amp; Doctor Consultation Scheduling.</p>
+        </div>
+
+        <form id="healthForm" class="form-grid" onsubmit="event.preventDefault(); submitHealthForm();">
+          <div class="form-group">
+            <label for="patientName">Patient Full Name <span class="req">*</span></label>
+            <input type="text" id="patientName" name="patientName" placeholder="Enter patient name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="abhaId">ABHA Health ID (14 Digits) <span class="req">*</span></label>
+            <input type="text" id="abhaId" name="abhaId" placeholder="12-3456-7890-1234" maxlength="17" required>
+          </div>
+
+          <div class="form-group">
+            <label for="patientEmail">Patient Email <span class="req">*</span></label>
+            <input type="email" id="patientEmail" name="patientEmail" placeholder="patient@health.gov.in" required>
+          </div>
+
+          <div class="form-group">
+            <label for="emergencyPhone">Emergency Contact Phone <span class="req">*</span></label>
+            <input type="tel" id="emergencyPhone" name="emergencyPhone" placeholder="+91 98765 43210" required>
+          </div>
+
+          <div class="form-group">
+            <label for="consultDept">Medical Specialization</label>
+            <select id="consultDept" name="consultDept">
+              <option value="spaceMed">Space Medicine &amp; Physiology</option>
+              <option value="cardio">Cardiology &amp; Vitals</option>
+              <option value="tele">General Tele-Consultation</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="consultDate">Preferred Appointment Date</label>
+            <input type="date" id="consultDate" value="2026-09-18">
+          </div>
+
+          <!-- Medical Record Document Preview -->
+          <div class="form-group full-width">
+            <label>Digital Health Card Preview (Confidential Medical Record)</label>
+            <div class="id-card-preview" style="border-left: 4px solid #10b981;">
+              <div class="id-card-badge" style="background: linear-gradient(135deg, #064e3b, #047857);">
+                <div class="id-chip">🏥</div>
+                <div class="id-details">
+                  <div class="id-title">NATIONAL HEALTH AUTHORITY (ABDM)</div>
+                  <div class="id-number">ABHA ID: 12-3456-7890-1234</div>
+                  <div class="id-name">PATIENT: ADITYA SHARMA · BLOOD: O+</div>
+                  <div class="id-dob">ALLERGIES: NONE · VACCINATION: VERIFIED</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions full-width">
+            <button type="submit" id="submitHealthBtn" class="btn btn-primary" style="background: #059669; border-color: #059669;">
+              🩺 Book Telemedicine Consultation
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('healthForm').reset();">
+              Clear
+            </button>
+          </div>
+        </form>
+
+        <div id="healthSuccessMessage" class="success-banner" style="display: none; background: #ecfdf5; border-color: #a7f3d0; color: #065f46;">
+          ✅ <strong>Medical Consultation Scheduled!</strong> Reference ID #ABDM-2026-4412 confirmed with Zero Sensitive Data Leakage.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Digital Cyber Banking & UPI Transfer Gateway -->
+    <div id="bankingTab" class="tab-content">
+      <div class="portal-card">
+        <div class="card-header">
+          <h2>🏦 Digital Cyber Banking &amp; UPI Payment Gateway</h2>
+          <p>Zero-Trust Financial Authorization &amp; Instant Fund Transfer.</p>
+        </div>
+
+        <form id="bankingForm" class="form-grid" onsubmit="event.preventDefault(); submitBankingForm();">
+          <div class="form-group">
+            <label for="accHolder">Account Holder Name <span class="req">*</span></label>
+            <input type="text" id="accHolder" name="accHolder" placeholder="Aditya Sharma" required>
+          </div>
+
+          <div class="form-group">
+            <label for="bankAccount">Bank Account Number (12-16 Digits) <span class="req">*</span></label>
+            <input type="text" id="bankAccount" name="bankAccount" placeholder="1234 5678 9012" maxlength="18" required>
+          </div>
+
+          <div class="form-group">
+            <label for="ifscCode">IFSC Code <span class="req">*</span></label>
+            <input type="text" id="ifscCode" name="ifscCode" placeholder="HDFC0001234" maxlength="11" required>
+          </div>
+
+          <div class="form-group">
+            <label for="transferAmount">Transfer Amount (INR ₹) <span class="req">*</span></label>
+            <input type="number" id="transferAmount" name="transferAmount" placeholder="5000" min="100" required>
+          </div>
+
+          <div class="form-group">
+            <label for="upiId">UPI Virtual Payment Address (VPA)</label>
+            <input type="text" id="upiId" name="upiId" placeholder="aditya@okhdfcbank">
+          </div>
+
+          <div class="form-group">
+            <label for="cardCvv">Transaction Security PIN / CVV <span class="req">*</span></label>
+            <input type="password" id="cardCvv" name="cardCvv" placeholder="•••" maxlength="4" required>
+          </div>
+
+          <!-- Virtual Credit/Debit Card Visual Widget -->
+          <div class="form-group full-width">
+            <label>Virtual Bank Card Preview (Visual Redaction Testbed)</label>
+            <div class="id-card-preview" style="border-left: 4px solid #f59e0b;">
+              <div class="id-card-badge" style="background: linear-gradient(135deg, #1e1b4b, #312e81);">
+                <div class="id-chip">💳</div>
+                <div class="id-details">
+                  <div class="id-title">BHARAT PAY SECURE DEBIT CARD</div>
+                  <div class="id-number">CARD: 4532 1198 3421 8890</div>
+                  <div class="id-name">HOLDER: ADITYA SHARMA · EXP: 12/28</div>
+                  <div class="id-dob">CVV: [MASKED] · 3D SECURE ENABLED</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions full-width">
+            <button type="submit" id="submitBankingBtn" class="btn btn-primary" style="background: #4f46e5; border-color: #4f46e5;">
+              🔒 Authorize Secure Payment
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('bankingForm').reset();">
+              Cancel
+            </button>
+          </div>
+        </form>
+
+        <div id="bankingSuccessMessage" class="success-banner" style="display: none; background: #eef2ff; border-color: #c7d2fe; color: #3730a3;">
+          🎉 <strong>Transaction Authorized!</strong> Reference #TXN-2026-7890 executed securely with zero financial credential exposure.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ISRO Space Research Fellowship & Grant Portal -->
+    <div id="isroGrantTab" class="tab-content">
+      <div class="portal-card">
+        <div class="card-header">
+          <h2>🛰️ ISRO Space Research Fellowship &amp; Grant Portal</h2>
+          <p>National Space Science Promotion &amp; Payload Grant Application.</p>
+        </div>
+
+        <form id="isroGrantForm" class="form-grid" onsubmit="event.preventDefault(); submitIsroGrantForm();">
+          <div class="form-group">
+            <label for="researcherName">Principal Investigator Name <span class="req">*</span></label>
+            <input type="text" id="researcherName" name="researcherName" placeholder="Dr. Aditya Sharma" required>
+          </div>
+
+          <div class="form-group">
+            <label for="researcherEmail">Institutional Email <span class="req">*</span></label>
+            <input type="email" id="researcherEmail" name="researcherEmail" placeholder="aditya.sharma@isro.gov.in" required>
+          </div>
+
+          <div class="form-group">
+            <label for="spaceCenter">Preferred ISRO Space Center</label>
+            <select id="spaceCenter" name="spaceCenter">
+              <option value="ursc">UR Rao Satellite Centre (URSC, Bengaluru)</option>
+              <option value="vssc">Vikram Sarabhai Space Centre (VSSC, Thiruvananthapuram)</option>
+              <option value="sdsc">Satish Dhawan Space Centre (SDSC SHAR, Sriharikota)</option>
+              <option value="sac">Space Applications Centre (SAC, Ahmedabad)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="projectDomain">Domain of Research</label>
+            <select id="projectDomain" name="projectDomain">
+              <option value="sat">Satellite Remote Sensing &amp; Earth Observation</option>
+              <option value="gaganyaan">Gaganyaan Human Spaceflight Microgravity</option>
+              <option value="ai">Edge AI &amp; Autonomous Visual Perception for Rovers</option>
+              <option value="propulsion">Cryogenic &amp; Green Space Propulsion</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="securityClearance">ISRO Security Clearance ID <span class="req">*</span></label>
+            <input type="text" id="securityClearance" name="securityClearance" placeholder="ISRO-SC-8891" required>
+          </div>
+
+          <div class="form-group">
+            <label for="grantBudget">Requested Grant Allocation (INR ₹)</label>
+            <input type="text" id="grantBudget" name="grantBudget" placeholder="₹ 25,00,000">
+          </div>
+
+          <!-- ISRO Security Clearance Badge Preview -->
+          <div class="form-group full-width">
+            <label>ISRO Scientist Clearance Badge Preview (Visual Redaction Testbed)</label>
+            <div class="id-card-preview" style="border-left: 4px solid #0284c7;">
+              <div class="id-card-badge" style="background: linear-gradient(135deg, #0c4a6e, #075985);">
+                <div class="id-chip">🛰️</div>
+                <div class="id-details">
+                  <div class="id-title">ISRO SPACE RESEARCH SCIENTIST BADGE</div>
+                  <div class="id-number">BADGE ID: ISRO-SC-8891 · CLEARANCE: LEVEL-3</div>
+                  <div class="id-name">NAME: ADITYA SHARMA · URSC BENGALURU</div>
+                  <div class="id-dob">EXP: 2030 · BIOMETRIC VERIFIED</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions full-width">
+            <button type="submit" id="submitIsroGrantBtn" class="btn btn-primary" style="background: #0284c7; border-color: #0284c7;">
+              🚀 Submit ISRO Research Proposal
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('isroGrantForm').reset();">
+              Reset Proposal
+            </button>
+          </div>
+        </form>
+
+        <div id="isroGrantSuccessMessage" class="success-banner" style="display: none; background: #f0f9ff; border-color: #bae6fd; color: #0369a1;">
+          🚀 <strong>Proposal Submitted Successfully!</strong> ISRO Grant Application #ISRO-GR-2026-9021 filed with zero credential exposure.
         </div>
       </div>
     </div>

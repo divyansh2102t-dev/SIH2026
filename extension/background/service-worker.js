@@ -37,7 +37,7 @@ function resolveTargetUrlFromGoal(goal) {
   if (urlMatch) return urlMatch[0];
 
   // 2. Demo portal shortcuts
-  if (g.includes('citizen') || g.includes('flight booking') || g.includes('testbed') || g === 'demo') {
+  if (g.includes('citizen') || g.includes('flight') || g.includes('health') || g.includes('telemedicine') || g.includes('banking') || g.includes('payment') || g.includes('grant') || g.includes('fellowship') || g.includes('testbed') || g === 'demo') {
     return 'http://127.0.0.1:8000/demo/index.html';
   }
 
