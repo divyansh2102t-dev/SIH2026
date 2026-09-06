@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ISRO Privacy Agent - SIH 26171</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-badge">ISRO</div>
+        <div>
+          <div class="title">Privacy Vision Agent</div>
+          <div class="subtitle">SIH 2026 · PS 26171</div>
+        </div>
+      </div>
+      <div class="connection-status" id="wsStatusBadge">
+        <span class="status-dot disconnected" id="wsDot"></span>
+        <span id="wsText">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Goal Input Section -->
+    <section class="section goal-section">
+      <label for="goalInput" class="section-label">Agent Objective / Task Goal</label>
+      <div class="input-wrapper">
+        <textarea id="goalInput" rows="2" placeholder="e.g., Fill the citizen application form and submit"></textarea>
+      </div>
+
+      <!-- Quick Preset Chips -->
+      <div class="preset-chips">
+        <button class="chip" data-goal="Fill citizen registration form and verify credentials">📝 Citizen Portal</button>
+        <button class="chip" data-goal="Select Delhi to Mumbai flight for Sep 15 and proceed">✈️ Flight Booking</button>
+        <button class="chip" data-goal="Log in securely and navigate to profile">🔒 Login Form</button>
+      </div>
+
+      <!-- Control Buttons -->
+      <div class="btn-group">
+        <button id="startBtn" class="btn btn-primary">
+          <span class="btn-icon">⚡</span> Run Privacy Agent
+        </button>
+        <button id="stopBtn" class="btn btn-danger" style="display: none;">
+          <span class="btn-icon">⏹</span> Stop Agent
+        </button>
+      </div>
+    </section>
+
+    <!-- Live Telemetry Matrix -->
+    <section class="section metrics-section">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Client Redact</div>
+          <div class="metric-val" id="metricClientTime">0 ms</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Server VLM</div>
+          <div class="metric-val" id="metricServerTime">0 ms</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total E2E</div>
+          <div class="metric-val" id="metricTotalTime">0 ms</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">PII Masked</div>
+          <div class="metric-val highlight" id="metricPiiCount">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Activity & Action HUD -->
+    <section class="section status-section">
+      <div class="status-header">
+        <span class="section-label">Current Execution Status</span>
+        <span class="step-badge" id="stepCounter">Step 0 / 10</span>
+      </div>
+      <div class="status-box" id="statusMessage">
+        Ready. Open a target web page and click "Run Privacy Agent".
+      </div>
+    </section>
+
+    <!-- Sanitized Frame Preview Toggle -->
+    <section class="section preview-section">
+      <div class="preview-header">
+        <span class="section-label">Sanitized Frame Sent to Server</span>
+        <span class="tag-safe">🛡️ ZERO RAW PII</span>
+      </div>
+      <div class="preview-container">
+        <img id="previewImg" src="" alt="Sanitized screen view" style="display: none;">
+        <div id="previewPlaceholder" class="preview-placeholder">
+          <span>Sanitized live frame will appear here during agent execution</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-left">Zero-Trust On-Device Perception</div>
+      <button id="openVaultBtn" class="link-btn">🔐 Local Vault</button>
+    </footer>
+  </div>
+
+  <!-- Local User Vault Modal -->
+  <div id="vaultModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔐 Local Encrypted User Vault</h3>
+        <button id="closeVaultBtn" class="close-btn">&times;</button>
+      </div>
+      <p class="modal-desc">
+        Data in this vault is stored locally in <code>chrome.storage</code> and is used for <code>fill_local</code> actions. <strong>It is never transmitted to the server.</strong>
+      </p>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="vaultFullName" value="Aditya Sharma">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="vaultEmail" value="aditya.sharma@isro.gov.in">
+      </div>
+      <div class="form-group">
+        <label>Phone Number</label>
+        <input type="text" id="vaultPhone" value="9876543210">
+      </div>
+      <div class="form-group">
+        <label>Aadhaar Number</label>
+        <input type="text" id="vaultAadhaar" value="2345 6789 0123">
+      </div>
+      <div class="form-group">
+        <label>PAN Number</label>
+        <input type="text" id="vaultPan" value="ABCDE1234F">
+      </div>
+      <button id="saveVaultBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save Vault</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
