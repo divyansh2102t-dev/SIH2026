@@ -278,24 +278,13 @@ class VLMInferenceClient:
                 if any(n in desc for n in ['name', 'holder', 'patient', 'applicant', 'researcher', 'citizen']) and not any(k in desc for k in ['username', 'filename', 'file', 'domain']):
                     return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="fullName", reasoning="Entering full legal name from encrypted vault")
 
-        # ── 3. Form Submit / Action Execution Buttons ──
-        for el in accessibility_tree:
-            sel = el.get('selector', '')
-            if not sel or sel in executed_selectors: continue
-
-            tag = el.get('tag', '')
-            role = el.get('role', '')
-            text = (el.get('text') or '').lower()
-            aria = (el.get('ariaLabel') or '').lower()
-            btn_desc = f"{text} {aria} {sel.lower()}"
-
-            if tag in ['button', 'input'] or role == 'button':
-                if any(action_kw in btn_desc for action_kw in ['authorize', 'submit', 'verify', 'proceed', 'book', 'confirm', 'pay', 'send application']):
-                    return ActionCommand(
-                        action=ActionType.CLICK,
-                        selector=sel,
-                        reasoning=f"Submitting form via button: '{el.get('text') or sel}'"
-                    )
+        # ── 3. Post Form-Fill Completion Guard (Never Auto-Submit; Preserves Manual User Review & Control) ──
+        if ActionType.FILL_LOCAL in previous_action_types:
+            return ActionCommand(
+                action=ActionType.DONE,
+                summary="Form fields populated securely from encrypted local vault. Ready for manual review and submission by user.",
+                reasoning="All form fields safely filled. Preserving user control for manual submission."
+            )
 
         # ── 4. In-Page Search Input Bar Discovery (Strict Search Matching Only) ──
         if ActionType.TYPE not in previous_action_types:
@@ -341,6 +330,10 @@ class VLMInferenceClient:
             placeholder = (el.get('placeholder') or '').lower()
             aria = (el.get('ariaLabel') or '').lower()
             combined_el = f"{text} {placeholder} {aria} {sel.lower()}"
+
+            # Safety Guardrail: Never auto-click sensitive submission or payment buttons
+            if any(sb in combined_el for sb in ['submit', 'authorize', 'confirm', 'pay', 'proceed', 'send application', 'book consultation']):
+                continue
 
             score = 0
             for kw in keywords:

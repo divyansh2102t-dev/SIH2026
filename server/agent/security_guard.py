@@ -135,7 +135,10 @@ class SecurityGuard:
 
         # 3. Vault Key Whitelist for fill_local
         if action.action == ActionType.FILL_LOCAL and action.local_data_key:
-            allowed_keys = {"email", "phone", "fullName", "fullname", "aadhaar", "pan"}
+            allowed_keys = {
+                "email", "phone", "fullName", "fullname", "aadhaar", "pan",
+                "abhaId", "bankAccount", "ifsc", "upiId", "securityClearance"
+            }
             if action.local_data_key not in allowed_keys:
                 print(f"[Security Guard] Disallowed local vault key: '{action.local_data_key}'")
                 action.local_data_key = "email"

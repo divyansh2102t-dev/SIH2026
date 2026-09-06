@@ -406,7 +406,7 @@
     });
 
     if (filledCount > 0) {
-      updateAgentHUD(`⚡ Zero-Trust Auto-Fill: ${filledCount} field${filledCount > 1 ? 's' : ''} filled from Encrypted Vault`, 'success');
+      updateAgentHUD(`⚡ Auto-Fill Complete: ${filledCount} field${filledCount > 1 ? 's' : ''} filled safely. Ready for manual review & submit.`, 'success');
     } else {
       updateAgentHUD('No matching empty form fields found on this page.', 'warning');
     }
