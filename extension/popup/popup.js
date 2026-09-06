@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Popup Script: Controls agent execution, renders live telemetry & manages local vault
+ * Popup Script: Controls agent execution, renders live telemetry & full-resolution frame enlarger
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const stepCounter = document.getElementById('stepCounter');
   const previewImg = document.getElementById('previewImg');
   const previewPlaceholder = document.getElementById('previewPlaceholder');
+  const previewContainer = document.getElementById('previewContainer');
+  const previewHoverBadge = document.getElementById('previewHoverBadge');
+  const enlargeBtn = document.getElementById('enlargeBtn');
 
   // Metrics
   const metricClientTime = document.getElementById('metricClientTime');
@@ -20,11 +23,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const metricTotalTime = document.getElementById('metricTotalTime');
   const metricPiiCount = document.getElementById('metricPiiCount');
 
+  // Image Enlargement Modal
+  const imageModal = document.getElementById('imageModal');
+  const enlargedImg = document.getElementById('enlargedImg');
+  const closeImageModalBtn = document.getElementById('closeImageModalBtn');
+  const downloadSanitizedBtn = document.getElementById('downloadSanitizedBtn');
+  const imageMetaText = document.getElementById('imageMetaText');
+
   // Vault Modal
   const openVaultBtn = document.getElementById('openVaultBtn');
   const closeVaultBtn = document.getElementById('closeVaultBtn');
   const vaultModal = document.getElementById('vaultModal');
   const saveVaultBtn = document.getElementById('saveVaultBtn');
+
+  let currentSanitizedDataUrl = '';
 
   // ── 1. Query Initial State from Service Worker ──
 
@@ -81,12 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setRunningUI(true, goal, 1);
-    statusMessage.textContent = 'Initializing on-device perception & capturing frame...';
+    statusMessage.textContent = 'Scanning tab & applying on-device visual redactions...';
 
     chrome.runtime.sendMessage({ action: 'START_AGENT', goal: goal }, (res) => {
       if (!res || !res.success) {
         setRunningUI(false);
-        statusMessage.textContent = `Failed to start: ${res?.error || 'Unknown error'}`;
+        statusMessage.textContent = `Error: ${res?.error || 'Failed to start agent on this tab'}`;
       }
     });
   });
@@ -118,9 +130,18 @@ document.addEventListener('DOMContentLoaded', () => {
       statusMessage.textContent = `Redacted ${msg.redactionCount} PII elements locally. Transmitting to server...`;
 
       if (msg.sanitizedScreenshot) {
+        currentSanitizedDataUrl = msg.sanitizedScreenshot;
         previewImg.src = msg.sanitizedScreenshot;
         previewImg.style.display = 'block';
         previewPlaceholder.style.display = 'none';
+        enlargeBtn.style.display = 'block';
+        if (previewHoverBadge) previewHoverBadge.style.display = 'block';
+        
+        // Update enlarged modal if already open
+        if (enlargedImg && imageModal.style.display === 'flex') {
+          enlargedImg.src = msg.sanitizedScreenshot;
+          imageMetaText.textContent = `Masked ${msg.redactionCount} items · Client latency: ${msg.clientTimeMs}ms`;
+        }
       }
     }
 
@@ -144,7 +165,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ── 6. Local Vault Management ──
+  // ── 6. Image Enlargement Lightbox Modal ──
+
+  function openEnlargedModal() {
+    if (!currentSanitizedDataUrl) return;
+    enlargedImg.src = currentSanitizedDataUrl;
+    imageMetaText.textContent = `Sanitized Frame (Zero PII Transmitted to Server)`;
+    imageModal.style.display = 'flex';
+  }
+
+  function closeEnlargedModal() {
+    imageModal.style.display = 'none';
+  }
+
+  if (enlargeBtn) enlargeBtn.addEventListener('click', openEnlargedModal);
+  if (previewContainer) previewContainer.addEventListener('click', openEnlargedModal);
+  if (closeImageModalBtn) closeImageModalBtn.addEventListener('click', closeEnlargedModal);
+
+  // Close modals on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeEnlargedModal();
+      vaultModal.style.display = 'none';
+    }
+  });
+
+  if (downloadSanitizedBtn) {
+    downloadSanitizedBtn.addEventListener('click', () => {
+      if (!currentSanitizedDataUrl) return;
+      const a = document.createElement('a');
+      a.href = currentSanitizedDataUrl;
+      a.download = `sanitized_frame_${Date.now()}.jpg`;
+      a.click();
+    });
+  }
+
+  // ── 7. Local Vault Management ──
 
   openVaultBtn.addEventListener('click', () => {
     chrome.storage.local.get(['userVault'], (res) => {

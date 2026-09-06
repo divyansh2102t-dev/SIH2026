@@ -26,14 +26,14 @@
     <section class="section goal-section">
       <label for="goalInput" class="section-label">Agent Objective / Task Goal</label>
       <div class="input-wrapper">
-        <textarea id="goalInput" rows="2" placeholder="e.g., Fill the citizen application form and submit"></textarea>
+        <textarea id="goalInput" rows="2" placeholder="e.g., Search leetcode or fill citizen form"></textarea>
       </div>
 
       <!-- Quick Preset Chips -->
       <div class="preset-chips">
         <button class="chip" data-goal="Fill citizen registration form and verify credentials">📝 Citizen Portal</button>
         <button class="chip" data-goal="Select Delhi to Mumbai flight for Sep 15 and proceed">✈️ Flight Booking</button>
-        <button class="chip" data-goal="Log in securely and navigate to profile">🔒 Login Form</button>
+        <button class="chip" data-goal="Search for ISRO Chandrayaan-3 mission">🔍 Search</button>
       </div>
 
       <!-- Control Buttons -->
@@ -80,16 +80,24 @@
       </div>
     </section>
 
-    <!-- Sanitized Frame Preview Toggle -->
+    <!-- Sanitized Frame Preview Section with Enlarge Button -->
     <section class="section preview-section">
       <div class="preview-header">
-        <span class="section-label">Sanitized Frame Sent to Server</span>
-        <span class="tag-safe">🛡️ ZERO RAW PII</span>
+        <div class="preview-title-box">
+          <span class="section-label" style="margin-bottom:0;">Sanitized Frame Sent to Server</span>
+          <span class="tag-safe">🛡️ ZERO RAW PII</span>
+        </div>
+        <button id="enlargeBtn" class="enlarge-action-btn" title="Enlarge Sanitized Frame to Full Resolution" style="display: none;">
+          🔍 Enlarge Frame
+        </button>
       </div>
-      <div class="preview-container">
+      <div class="preview-container" id="previewContainer" title="Click to view enlarged full resolution image">
         <img id="previewImg" src="" alt="Sanitized screen view" style="display: none;">
         <div id="previewPlaceholder" class="preview-placeholder">
           <span>Sanitized live frame will appear here during agent execution</span>
+        </div>
+        <div id="previewHoverBadge" class="preview-hover-badge" style="display: none;">
+          <span>🔍 Click to Enlarge View</span>
         </div>
       </div>
     </section>
@@ -99,6 +107,29 @@
       <div class="footer-left">Zero-Trust On-Device Perception</div>
       <button id="openVaultBtn" class="link-btn">🔐 Local Vault</button>
     </footer>
+  </div>
+
+  <!-- Fullscreen / Enlarged Image Lightbox Modal -->
+  <div id="imageModal" class="modal" style="display: none;">
+    <div class="modal-content image-modal-content">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14px;">🛡️</span>
+          <div>
+            <h3 style="font-size: 13px; color: #ffffff;">Sanitized Viewport Frame (Transmitted to VLM)</h3>
+            <div style="font-size: 9px; color: #38bdf8;">All sensitive PII replaced with on-device semantic tokens</div>
+          </div>
+        </div>
+        <button id="closeImageModalBtn" class="close-btn" title="Close preview">&times;</button>
+      </div>
+      <div class="enlarged-img-wrapper">
+        <img id="enlargedImg" src="" alt="Full Resolution Sanitized View">
+      </div>
+      <div class="image-modal-footer">
+        <span id="imageMetaText">Zero PII Leakage Verified</span>
+        <button id="downloadSanitizedBtn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 10px;">💾 Save Image</button>
+      </div>
+    </div>
   </div>
 
   <!-- Local User Vault Modal -->

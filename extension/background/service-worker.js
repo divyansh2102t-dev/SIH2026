@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Background Service Worker: Orchestrates Capture, Offscreen Redaction, WebSockets & Agent Loop
+ * Background Service Worker: Orchestrates Capture, Dynamic Injection, Offscreen Redaction & WebSockets
  */
 
 importScripts('../lib/pii-regex.js', '../lib/payload-builder.js');
@@ -14,7 +14,37 @@ let maxIterations = 10;
 let previousActions = [];
 let serverUrl = 'ws://127.0.0.1:8000/ws';
 
-// ── 1. Offscreen Document Lifecycle ──
+// ── 1. Dynamic Content Script Injection Helper ──
+
+async function ensureContentScriptInjected(tabId) {
+  try {
+    const ping = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
+    if (ping && ping.success) return true;
+  } catch (e) {
+    // Content script not yet injected into this tab, inject dynamically
+    console.log(`[Service Worker] Injecting content scripts into Tab ${tabId}...`);
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: [
+          'lib/pii-regex.js',
+          'content/dom-analyzer.js',
+          'content/action-executor.js',
+          'content/content-bridge.js'
+        ]
+      });
+      // Short pause to let scripts initialize
+      await new Promise(r => setTimeout(r, 150));
+      return true;
+    } catch (injectErr) {
+      console.error('[Service Worker] Failed to dynamically inject content scripts:', injectErr);
+      throw new Error(`Cannot access this tab (${injectErr.message}). If this is a chrome:// or new tab page, please navigate to a standard website first.`);
+    }
+  }
+  return true;
+}
+
+// ── 2. Offscreen Document Lifecycle ──
 
 async function ensureOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL('offscreen/offscreen.html');
@@ -33,7 +63,7 @@ async function ensureOffscreenDocument() {
   console.log('[Service Worker] Offscreen document spawned.');
 }
 
-// ── 2. WebSocket Connection Manager ──
+// ── 3. WebSocket Connection Manager ──
 
 function connectWebSocket(url = serverUrl) {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -64,7 +94,6 @@ function connectWebSocket(url = serverUrl) {
       console.log('[Service Worker] WebSocket disconnected.');
       broadcastToPopup({ type: 'WS_STATUS', status: 'DISCONNECTED' });
       ws = null;
-      // Auto reconnect after 3 seconds if not running
       setTimeout(() => {
         if (!ws && !isLoopRunning) connectWebSocket(url);
       }, 3000);
@@ -80,12 +109,10 @@ function connectWebSocket(url = serverUrl) {
 }
 
 function broadcastToPopup(data) {
-  chrome.runtime.sendMessage(data).catch(() => {
-    // Popup might not be open, safe to ignore
-  });
+  chrome.runtime.sendMessage(data).catch(() => {});
 }
 
-// ── 3. Single Step: Capture → Sanitize → Transmit → Execute ──
+// ── 4. Single Step: Capture → Sanitize → Transmit → Execute ──
 
 async function runAgentStep(tabId) {
   if (!isLoopRunning) return;
@@ -105,16 +132,19 @@ async function runAgentStep(tabId) {
   });
 
   try {
-    // A. Request DOM Analysis from Content Script
+    // A. Ensure content scripts are active in tab
+    await ensureContentScriptInjected(tabId);
+
+    // B. Request DOM Analysis from Content Script
     const domResponse = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
     if (!domResponse || !domResponse.success) {
       throw new Error('Failed to extract DOM state from active tab');
     }
 
-    // B. Capture Viewport Screenshot
+    // C. Capture Viewport Screenshot
     const rawScreenshot = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
 
-    // C. Perform Offscreen Visual & Regex Redaction
+    // D. Perform Offscreen Visual & Regex Redaction
     await ensureOffscreenDocument();
     const redactResponse = await chrome.runtime.sendMessage({
       target: 'OFFSCREEN',
@@ -131,7 +161,7 @@ async function runAgentStep(tabId) {
 
     const clientDuration = Math.round(performance.now() - stepStartTime);
 
-    // Broadcast live preview to popup
+    // Broadcast live preview & manifest to popup
     broadcastToPopup({
       type: 'REDACTION_COMPLETE',
       sanitizedScreenshot: redactResponse.sanitizedDataUrl,
@@ -140,7 +170,7 @@ async function runAgentStep(tabId) {
       clientTimeMs: clientDuration
     });
 
-    // D. Build Sanitized Payload
+    // E. Build Sanitized Payload
     const payload = buildSanitizedPayload({
       sessionId: `sih_${clientId}`,
       userGoal: currentGoal,
@@ -156,15 +186,15 @@ async function runAgentStep(tabId) {
       previousActions: previousActions
     });
 
-    // E. Transmit to Server via WebSocket
+    // F. Transmit to Server via WebSocket
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      throw new Error('Server WebSocket is not connected');
+      throw new Error('Server WebSocket is not connected. Please ensure backend server is running on localhost:8000');
     }
 
     const serverStartTime = performance.now();
     ws.send(JSON.stringify(payload));
 
-    // Await server action response via dedicated Promise handler
+    // Await server action response
     const actionCommand = await waitForServerAction(30000);
     const serverDuration = Math.round(performance.now() - serverStartTime);
 
@@ -177,7 +207,7 @@ async function runAgentStep(tabId) {
       totalE2ETimeMs: clientDuration + serverDuration
     });
 
-    // F. Execute Action on Web Page
+    // G. Execute Action on Web Page
     const executionResult = await chrome.tabs.sendMessage(tabId, {
       action: 'EXECUTE_AGENT_ACTION',
       command: actionCommand
@@ -189,7 +219,7 @@ async function runAgentStep(tabId) {
       result: executionResult
     });
 
-    // G. Check Completion Condition
+    // H. Check Completion Condition
     if (actionCommand.action === 'done' || executionResult?.complete) {
       stopAgentLoop(`Goal achieved: ${actionCommand.summary || 'Task Complete'}`);
       return;
@@ -199,7 +229,7 @@ async function runAgentStep(tabId) {
     if (isLoopRunning) {
       setTimeout(() => {
         runAgentStep(tabId);
-      }, 1500); // 1.5s breathing pause between steps
+      }, 1500);
     }
 
   } catch (err) {
@@ -209,7 +239,7 @@ async function runAgentStep(tabId) {
   }
 }
 
-// ── 4. Server Action Promise Resolver ──
+// ── 5. Server Action Promise Resolver ──
 
 let pendingActionResolver = null;
 let pendingActionRejecter = null;
@@ -237,7 +267,7 @@ function handleServerMessage(message) {
   }
 }
 
-// ── 5. Agent Control Functions ──
+// ── 6. Agent Control Functions ──
 
 function startAgentLoop(goal, tabId) {
   isLoopRunning = true;
@@ -255,13 +285,18 @@ function stopAgentLoop(reason = 'User stopped') {
   broadcastToPopup({ type: 'AGENT_STOPPED', reason });
 }
 
-// ── 6. Message Listener from Popup / Options ──
+// ── 7. Message Listener from Popup / Options ──
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'START_AGENT') {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0) {
-        startAgentLoop(request.goal, tabs[0].id);
+        const activeTab = tabs[0];
+        if (activeTab.url && (activeTab.url.startsWith('chrome://') || activeTab.url.startsWith('chrome-extension://') || activeTab.url.startsWith('edge://'))) {
+          sendResponse({ success: false, error: 'Cannot run agent on browser internal pages. Please open a regular website.' });
+          return;
+        }
+        startAgentLoop(request.goal, activeTab.id);
         sendResponse({ success: true, status: 'STARTED' });
       } else {
         sendResponse({ success: false, error: 'No active tab found' });
