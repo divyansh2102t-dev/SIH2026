@@ -40,6 +40,20 @@
         break;
       }
 
+      case 'AUTO_FILL_FORM_PAGE': {
+        if (window.SIH_ACTION_EXECUTOR && typeof window.SIH_ACTION_EXECUTOR.autoFill === 'function') {
+          window.SIH_ACTION_EXECUTOR.autoFill(request.vault).then(result => {
+            sendResponse(result);
+          }).catch(err => {
+            sendResponse({ success: false, error: err.message });
+          });
+          return true;
+        } else {
+          sendResponse({ success: false, error: 'AutoFill executor not available' });
+        }
+        break;
+      }
+
       case 'UPDATE_HUD_STATUS': {
         if (window.SIH_ACTION_EXECUTOR) {
           window.SIH_ACTION_EXECUTOR.updateHUD(request.message, request.status || 'active');

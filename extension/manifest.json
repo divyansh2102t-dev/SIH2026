@@ -20,6 +20,7 @@
       "matches": ["<all_urls>"],
       "js": [
         "lib/pii-regex.js",
+        "lib/vault-crypto.js",
         "content/dom-analyzer.js",
         "content/action-executor.js",
         "content/content-bridge.js"

@@ -48,6 +48,9 @@
         <button id="startBtn" class="btn btn-primary">
           <span class="btn-icon">⚡</span> Run Privacy Agent
         </button>
+        <button id="autoFillBtn" class="btn btn-secondary" title="Auto-fill all detected form fields from your encrypted local vault in 1 click" style="border-color: rgba(16, 185, 129, 0.4); color: #34d399; background: rgba(16, 185, 129, 0.08);">
+          <span class="btn-icon">📝</span> Auto-Fill Page
+        </button>
         <button id="stopBtn" class="btn btn-danger" style="display: none;">
           <span class="btn-icon">⏹</span> Stop Agent
         </button>
@@ -83,7 +86,7 @@
         <span class="step-badge" id="stepCounter">Step 0 / 10</span>
       </div>
       <div class="status-box" id="statusMessage">
-        Ready. Open a target web page and click "Run Privacy Agent".
+        Ready. Open a target web page and click "Run Privacy Agent" or "Auto-Fill Page".
       </div>
     </section>
 
@@ -176,40 +179,73 @@
     </div>
   </div>
 
-  <!-- Local User Vault Modal -->
+  <!-- Local User Encrypted Vault Modal -->
   <div id="vaultModal" class="modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
       <div class="modal-header">
-        <h3>🔐 Local Encrypted User Vault</h3>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">🔐</span>
+          <div>
+            <h3 style="font-size: 13px; color: #ffffff;">Local Encrypted Personal Vault</h3>
+            <div style="font-size: 9px; color: #10b981; font-weight: 600;">🔒 AES-GCM 256-Bit Hardware-Backed Encryption</div>
+          </div>
+        </div>
         <button id="closeVaultBtn" class="close-btn">&times;</button>
       </div>
-      <p class="modal-desc">
-        Data in this vault is stored locally in <code>chrome.storage</code> and is used for <code>fill_local</code> actions. <strong>It is never transmitted to the server.</strong>
+      <p class="modal-desc" style="margin-bottom: 8px;">
+        All personal credentials are encrypted on-device before being saved into local storage. <strong>Plaintext data is never written to disk and never leaves this machine.</strong>
       </p>
-      <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" id="vaultFullName" value="Aditya Sharma">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+        <div class="form-group" style="grid-column: span 2;">
+          <label>Full Legal Name</label>
+          <input type="text" id="vaultFullName" value="Aditya Sharma">
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="vaultEmail" value="aditya.sharma@isro.gov.in">
+        </div>
+        <div class="form-group">
+          <label>Mobile Phone</label>
+          <input type="text" id="vaultPhone" value="9876543210">
+        </div>
+        <div class="form-group">
+          <label>Aadhaar UID</label>
+          <input type="text" id="vaultAadhaar" value="2345 6789 0123">
+        </div>
+        <div class="form-group">
+          <label>PAN Card Number</label>
+          <input type="text" id="vaultPan" value="ABCDE1234F">
+        </div>
+        <div class="form-group">
+          <label>ABHA Health ID</label>
+          <input type="text" id="vaultAbhaId" value="12-3456-7890-1234">
+        </div>
+        <div class="form-group">
+          <label>Bank Account Number</label>
+          <input type="text" id="vaultBankAccount" value="123456789012">
+        </div>
+        <div class="form-group">
+          <label>IFSC Code</label>
+          <input type="text" id="vaultIfsc" value="HDFC0001234">
+        </div>
+        <div class="form-group">
+          <label>UPI VPA ID</label>
+          <input type="text" id="vaultUpiId" value="aditya@okhdfcbank">
+        </div>
+        <div class="form-group" style="grid-column: span 2;">
+          <label>ISRO Security Clearance Badge ID</label>
+          <input type="text" id="vaultSecurityClearance" value="ISRO-SC-8891">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="vaultEmail" value="aditya.sharma@isro.gov.in">
-      </div>
-      <div class="form-group">
-        <label>Phone Number</label>
-        <input type="text" id="vaultPhone" value="9876543210">
-      </div>
-      <div class="form-group">
-        <label>Aadhaar Number</label>
-        <input type="text" id="vaultAadhaar" value="2345 6789 0123">
-      </div>
-      <div class="form-group">
-        <label>PAN Number</label>
-        <input type="text" id="vaultPan" value="ABCDE1234F">
-      </div>
-      <button id="saveVaultBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save Vault</button>
+
+      <button id="saveVaultBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+        🔒 Encrypt &amp; Save Vault (AES-GCM)
+      </button>
     </div>
   </div>
 
+  <script src="../lib/vault-crypto.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

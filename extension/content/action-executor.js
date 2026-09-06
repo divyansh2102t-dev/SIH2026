@@ -254,32 +254,28 @@
 
         case 'fill_local': {
           // Zero-Trust Local Credential Fill:
-          // Fetches sensitive key directly from local chrome.storage
+          // Fetches sensitive key directly from local AES-GCM Encrypted Vault
           if (!targetEl) return { success: false, error: `Element not found: ${selector}` };
           const dataKey = command.local_data_key || 'email';
+
+          const vault = typeof VaultCrypto !== 'undefined' ? await VaultCrypto.loadDecryptedVault() : {
+            email: 'aditya.sharma@isro.gov.in',
+            phone: '9876543210',
+            fullName: 'Aditya Sharma',
+            aadhaar: '2345 6789 0123',
+            pan: 'ABCDE1234F'
+          };
+
+          const secretVal = vault[dataKey] || vault[dataKey.toLowerCase()] || `[Vault_${dataKey}]`;
           
-          return new Promise(resolve => {
-            chrome.storage.local.get(['userVault'], (res) => {
-              const vault = res.userVault || {
-                email: 'user.citizen@isro.gov.in',
-                phone: '9876543210',
-                fullName: 'Aditya Sharma',
-                aadhaar: '2345 6789 0123',
-                pan: 'ABCDE1234F'
-              };
+          targetEl.focus();
+          targetEl.value = secretVal;
+          targetEl.dispatchEvent(new InputEvent('input', { bubbles: true, data: secretVal }));
+          targetEl.dispatchEvent(new Event('change', { bubbles: true }));
 
-              const secretVal = vault[dataKey] || vault[dataKey.toLowerCase()] || `[Vault_${dataKey}]`;
-              
-              targetEl.focus();
-              targetEl.value = secretVal;
-              targetEl.dispatchEvent(new InputEvent('input', { bubbles: true, data: secretVal }));
-              targetEl.dispatchEvent(new Event('change', { bubbles: true }));
-
-              clearHighlight();
-              updateAgentHUD(`Zero-Trust Local Fill: ${dataKey}`, 'success');
-              resolve({ success: true, executed: 'fill_local', dataKey });
-            });
-          });
+          clearHighlight();
+          updateAgentHUD(`Zero-Trust Encrypted Fill: ${dataKey}`, 'success');
+          return { success: true, executed: 'fill_local', dataKey };
         }
 
         case 'scroll': {
@@ -332,9 +328,96 @@
     }
   }
 
+  /**
+   * ⚡ Auto-Fill Entire Current Form Page with AES-GCM Encrypted Local Vault
+   */
+  async function autoFillEntirePage(customVault) {
+    const vault = customVault || (typeof VaultCrypto !== 'undefined' ? await VaultCrypto.loadDecryptedVault() : {
+      fullName: 'Aditya Sharma',
+      email: 'aditya.sharma@isro.gov.in',
+      phone: '9876543210',
+      aadhaar: '2345 6789 0123',
+      pan: 'ABCDE1234F',
+      abhaId: '12-3456-7890-1234',
+      bankAccount: '123456789012',
+      ifsc: 'HDFC0001234',
+      upiId: 'aditya@okhdfcbank',
+      securityClearance: 'ISRO-SC-8891'
+    });
+
+    const formInputs = document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]), textarea, select');
+    let filledCount = 0;
+    const filledFields = [];
+
+    formInputs.forEach(el => {
+      const id = (el.id || '').toLowerCase();
+      const name = (el.name || '').toLowerCase();
+      const placeholder = (el.placeholder || '').toLowerCase();
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      const type = (el.type || '').toLowerCase();
+      const descriptor = `${id} ${name} ${placeholder} ${aria} ${type}`;
+
+      let fillKey = null;
+      let fillVal = null;
+
+      if (descriptor.includes('aadhaar') || descriptor.includes('aadhar') || descriptor.includes('uid')) {
+        fillKey = 'aadhaar'; fillVal = vault.aadhaar;
+      } else if (descriptor.includes('pan')) {
+        fillKey = 'pan'; fillVal = vault.pan;
+      } else if (descriptor.includes('abha') || descriptor.includes('health')) {
+        fillKey = 'abhaId'; fillVal = vault.abhaId;
+      } else if (descriptor.includes('ifsc')) {
+        fillKey = 'ifsc'; fillVal = vault.ifsc;
+      } else if (descriptor.includes('upi') || descriptor.includes('vpa')) {
+        fillKey = 'upiId'; fillVal = vault.upiId;
+      } else if (descriptor.includes('bank') || descriptor.includes('account') || descriptor.includes('accnum') || descriptor.includes('accno')) {
+        fillKey = 'bankAccount'; fillVal = vault.bankAccount;
+      } else if (descriptor.includes('clearance') || descriptor.includes('badge')) {
+        fillKey = 'securityClearance'; fillVal = vault.securityClearance;
+      } else if (descriptor.includes('email') || type === 'email') {
+        fillKey = 'email'; fillVal = vault.email;
+      } else if (descriptor.includes('phone') || descriptor.includes('mobile') || descriptor.includes('contact') || descriptor.includes('tel') || type === 'tel') {
+        fillKey = 'phone'; fillVal = vault.phone;
+      } else if (descriptor.includes('name') || descriptor.includes('holder') || descriptor.includes('patient') || descriptor.includes('applicant') || descriptor.includes('researcher')) {
+        fillKey = 'fullName'; fillVal = vault.fullName;
+      } else if (descriptor.includes('amount') || descriptor.includes('budget')) {
+        fillKey = 'amount'; fillVal = descriptor.includes('budget') ? '₹ 25,00,000' : '5000';
+      } else if (type === 'password' || descriptor.includes('cvv') || descriptor.includes('pin')) {
+        fillKey = 'cvv'; fillVal = '789';
+      }
+
+      if (fillVal && (!el.value || el.value === '')) {
+        el.focus();
+        el.value = fillVal;
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, data: fillVal }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // Visual Green Success Highlight
+        el.style.transition = 'all 0.3s ease';
+        el.style.borderColor = '#10b981';
+        el.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
+        setTimeout(() => {
+          el.style.boxShadow = '';
+        }, 2500);
+
+        filledCount++;
+        filledFields.push(fillKey);
+      }
+    });
+
+    if (filledCount > 0) {
+      updateAgentHUD(`⚡ Zero-Trust Auto-Fill: ${filledCount} field${filledCount > 1 ? 's' : ''} filled from Encrypted Vault`, 'success');
+    } else {
+      updateAgentHUD('No matching empty form fields found on this page.', 'warning');
+    }
+
+    return { success: true, filledCount, filledFields };
+  }
+
   window.SIH_ACTION_EXECUTOR = {
     execute: executeAction,
     updateHUD: updateAgentHUD,
+    autoFill: autoFillEntirePage,
     clearHighlight: clearHighlight
   };
 })();

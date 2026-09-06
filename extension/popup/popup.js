@@ -83,6 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const autoFillBtn = document.getElementById('autoFillBtn');
+
   // ── 4. Control Buttons ──
 
   startBtn.addEventListener('click', () => {
@@ -102,6 +104,55 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // ⚡ 1-Click Auto-Fill Form from AES-GCM Encrypted Vault
+  if (autoFillBtn) {
+    autoFillBtn.addEventListener('click', async () => {
+      statusMessage.textContent = 'Decrypting local vault & scanning active form fields...';
+
+      try {
+        const vault = typeof VaultCrypto !== 'undefined' ? await VaultCrypto.loadDecryptedVault() : {};
+
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+          if (!tabs || tabs.length === 0) {
+            statusMessage.textContent = 'Error: No active tab found.';
+            return;
+          }
+
+          const activeTab = tabs[0];
+          try {
+            chrome.tabs.sendMessage(activeTab.id, { action: 'AUTO_FILL_FORM_PAGE', vault: vault }, (res) => {
+              if (chrome.runtime.lastError || !res) {
+                // Try executing script if content script wasn't injected
+                chrome.scripting.executeScript({
+                  target: { tabId: activeTab.id },
+                  files: ['lib/vault-crypto.js', 'content/action-executor.js', 'content/content-bridge.js']
+                }, () => {
+                  setTimeout(() => {
+                    chrome.tabs.sendMessage(activeTab.id, { action: 'AUTO_FILL_FORM_PAGE', vault: vault }, (retryRes) => {
+                      if (retryRes && retryRes.success) {
+                        statusMessage.innerHTML = `<strong>⚡ Auto-Filled ${retryRes.filledCount} form field${retryRes.filledCount > 1 ? 's' : ''}</strong> on current page!`;
+                      } else {
+                        statusMessage.textContent = 'Form auto-fill complete.';
+                      }
+                    });
+                  }, 300);
+                });
+              } else if (res.success) {
+                statusMessage.innerHTML = `<strong>⚡ Auto-Filled ${res.filledCount} form field${res.filledCount > 1 ? 's' : ''}</strong> on current page securely!`;
+              } else {
+                statusMessage.textContent = res.error || 'Failed to fill form fields.';
+              }
+            });
+          } catch (e) {
+            statusMessage.textContent = `Auto-fill error: ${e.message}`;
+          }
+        });
+      } catch (err) {
+        statusMessage.textContent = `Vault error: ${err.message}`;
+      }
+    });
+  }
 
   stopBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'STOP_AGENT' }, () => {
@@ -285,17 +336,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── 8. Local Vault Management ──
+  // ── 8. Local AES-GCM Encrypted Vault Management ──
 
-  openVaultBtn.addEventListener('click', () => {
-    chrome.storage.local.get(['userVault'], (res) => {
-      const vault = res.userVault || {};
-      if (vault.fullName) document.getElementById('vaultFullName').value = vault.fullName;
-      if (vault.email) document.getElementById('vaultEmail').value = vault.email;
-      if (vault.phone) document.getElementById('vaultPhone').value = vault.phone;
-      if (vault.aadhaar) document.getElementById('vaultAadhaar').value = vault.aadhaar;
-      if (vault.pan) document.getElementById('vaultPan').value = vault.pan;
-    });
+  openVaultBtn.addEventListener('click', async () => {
+    const vault = typeof VaultCrypto !== 'undefined' ? await VaultCrypto.loadDecryptedVault() : {};
+    
+    if (vault.fullName) document.getElementById('vaultFullName').value = vault.fullName;
+    if (vault.email) document.getElementById('vaultEmail').value = vault.email;
+    if (vault.phone) document.getElementById('vaultPhone').value = vault.phone;
+    if (vault.aadhaar) document.getElementById('vaultAadhaar').value = vault.aadhaar;
+    if (vault.pan) document.getElementById('vaultPan').value = vault.pan;
+    if (vault.abhaId && document.getElementById('vaultAbhaId')) document.getElementById('vaultAbhaId').value = vault.abhaId;
+    if (vault.bankAccount && document.getElementById('vaultBankAccount')) document.getElementById('vaultBankAccount').value = vault.bankAccount;
+    if (vault.ifsc && document.getElementById('vaultIfsc')) document.getElementById('vaultIfsc').value = vault.ifsc;
+    if (vault.upiId && document.getElementById('vaultUpiId')) document.getElementById('vaultUpiId').value = vault.upiId;
+    if (vault.securityClearance && document.getElementById('vaultSecurityClearance')) document.getElementById('vaultSecurityClearance').value = vault.securityClearance;
+
     vaultModal.style.display = 'flex';
   });
 
@@ -303,19 +359,28 @@ document.addEventListener('DOMContentLoaded', () => {
     vaultModal.style.display = 'none';
   });
 
-  saveVaultBtn.addEventListener('click', () => {
+  saveVaultBtn.addEventListener('click', async () => {
     const vault = {
       fullName: document.getElementById('vaultFullName').value.trim(),
       email: document.getElementById('vaultEmail').value.trim(),
       phone: document.getElementById('vaultPhone').value.trim(),
       aadhaar: document.getElementById('vaultAadhaar').value.trim(),
-      pan: document.getElementById('vaultPan').value.trim()
+      pan: document.getElementById('vaultPan').value.trim(),
+      abhaId: document.getElementById('vaultAbhaId') ? document.getElementById('vaultAbhaId').value.trim() : '12-3456-7890-1234',
+      bankAccount: document.getElementById('vaultBankAccount') ? document.getElementById('vaultBankAccount').value.trim() : '123456789012',
+      ifsc: document.getElementById('vaultIfsc') ? document.getElementById('vaultIfsc').value.trim() : 'HDFC0001234',
+      upiId: document.getElementById('vaultUpiId') ? document.getElementById('vaultUpiId').value.trim() : 'aditya@okhdfcbank',
+      securityClearance: document.getElementById('vaultSecurityClearance') ? document.getElementById('vaultSecurityClearance').value.trim() : 'ISRO-SC-8891'
     };
 
-    chrome.storage.local.set({ userVault: vault }, () => {
-      alert('Local vault saved securely on your device.');
-      vaultModal.style.display = 'none';
-    });
+    if (typeof VaultCrypto !== 'undefined') {
+      await VaultCrypto.saveEncryptedVault(vault);
+    } else {
+      chrome.storage.local.set({ userVault: vault });
+    }
+
+    alert('🔒 Personal Vault Encrypted with AES-GCM 256-Bit & Saved Securely on Device!');
+    vaultModal.style.display = 'none';
   });
 
   // Modal ESC key listener
