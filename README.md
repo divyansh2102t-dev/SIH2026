@@ -148,9 +148,12 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 2. **Context-Aware Visual Redaction:** Sensitive elements are redacted locally using **Blackout masks, Gaussian Blur, and Pixelation** with semantic placeholder tokens (e.g. `[PII_AADHAAR]`, `[PASSWORD_MASK]`, `[USER_AVATAR]`).
 3. **Structured VLM Reasoning:** Transmits *only* sanitized frames + structural accessibility trees over encrypted WebSockets to a central VLM (Qwen2.5-VL-7B / Groq Llama-3.2-Vision / Universal Web Reasoner).
 4. **Zero-Trust `fill_local` Protocol:** When the server VLM needs to fill user credentials, it instructs the client which field to target; the extension fills the value directly from local encrypted storage, **never transmitting the secret over the network**.
-5. **Auto-Minimizing In-Page Floating HUD:** The floating execution overlay provides live visual feedback and automatically transitions upon task completion into a discreet status capsule (`🤖 ISRO Agent · Done ✓`), preventing screen obstruction while retaining 1-click expansion.
-6. **Local 20-Search & Task History Vault:** All search queries, objectives, step counts, and PII telemetry are stored 100% locally on the user's machine (`chrome.storage.local`) with a 20-item FIFO limit and instant 1-click re-run capabilities.
-7. **Organic Search Result Router & Noise Filter:** Bypasses search engine skip/accessibility boilerplate links and accurately selects high-relevance organic destination targets (e.g. LeetCode problems, GitHub repositories, ISRO portals).
+5. **Hardware-Backed AES-GCM 256-Bit Encrypted Local Vault:** All personal credentials (Aadhaar, PAN, ABHA Health ID, Bank Account, IFSC, UPI VPA, ISRO Clearance Badge) are encrypted on-device using the Web Crypto API (`SubtleCrypto`) with **PBKDF2 key derivation (100,000 iterations of SHA-256)** and random 16-byte salts / 12-byte IVs. Plaintext data is never written to disk.
+6. **1-Click "Auto-Fill Current Page":** A dedicated **`📝 Auto-Fill Page`** engine that evaluates all active inputs on the page, maps them to matching encrypted vault keys, dispatches reactive synthetic events, and provides visual green verification halos.
+7. **Auto-Minimizing In-Page Floating HUD:** The floating execution overlay provides live visual feedback and automatically transitions upon task completion into a discreet status capsule (`🤖 ISRO Agent · Done ✓`), preventing screen obstruction while retaining 1-click expansion.
+8. **Local 20-Search & Task History Vault:** All search queries, objectives, step counts, and PII telemetry are stored 100% locally on the user's machine (`chrome.storage.local`) with a 20-item FIFO limit and instant 1-click re-run capabilities.
+9. **Organic Search Result Router & Noise Filter:** Bypasses search engine skip/accessibility boilerplate links and accurately selects high-relevance organic destination targets (e.g. LeetCode problems, GitHub repositories, ISRO portals).
+10. **5 Multi-Domain Real-World Testbed Portals:** Integrated sandbox covering Citizen Verification, Express Flight Booking, Ayushman Health Records, Digital Cyber Banking, and ISRO Space Research Fellowship applications.
 
 ---
 
@@ -160,13 +163,14 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 |---|---|---|
 | **1. Anti-Prompt Injection** | `SecurityGuard.sanitize_accessibility_tree()` | Statically inspects and neutralizes adversarial text (e.g. `Ignore previous instructions`, `system:`) embedded inside untrusted web pages before prompting the VLM. |
 | **2. Action Sandbox & Protocol Filter** | `SecurityGuard.validate_outgoing_action()` | Blocks dangerous navigation schemes (`javascript:`, `data:`, `file:`, `chrome:`, `vbscript:`). Validates selectors and commands against a strict whitelist. |
-| **3. Destructive Action Interceptor** | Keyword pattern matcher | Prevents unauthorized execution of irreversible actions (e.g. `delete account`, `format`, `erase all data`) without manual user confirmation. |
-| **4. Anti-Replay & Timestamp Freshness** | Cryptographic Nonce + Epoch Verification | Verifies per-frame random nonces (`nonce_...`) and drops stale or intercepted frames (`>35s` drift). |
-| **5. Anti-DoS Rate Limiter** | Token-bucket per client | Caps requests at **12 requests / 6 seconds** to protect against runaway client loops and server flooding. |
-| **6. Zero-Trust Local Vault (`fill_local`)** | Whitelisted vault keys | Sensitive credentials (Aadhaar, PAN, email, phone) are stored locally in `chrome.storage.local`. Server instructs *which* field to fill; **actual values never touch the network**. |
-| **7. On-Device Search History Vault** | `chrome.storage.local` (Max 20 items) | User search queries and task logs remain 100% client-side with zero cloud telemetry or tracking. |
-| **8. Redaction Dilation Buffer** | `+10%` spatial bounding box padding | Eliminates visual edge-bleed on blurred avatars and blacked-out form boxes. |
-| **9. Content Security Policy (CSP)** | `script-src 'self' 'wasm-unsafe-eval'` | Restricts extension context to trusted local code; completely bans `eval()` and arbitrary remote script execution. |
+| **3. AES-GCM 256-Bit Vault Encryption** | `VaultCrypto.encryptVault()` / Web Crypto API | Encrypts all local user credentials on-device with PBKDF2 (100k rounds) + dynamic IV/salt. Zero plaintext stored on disk. |
+| **4. Destructive Action Interceptor** | Keyword pattern matcher | Prevents unauthorized execution of irreversible actions (e.g. `delete account`, `format`, `erase all data`) without manual user confirmation. |
+| **5. Anti-Replay & Timestamp Freshness** | Cryptographic Nonce + Epoch Verification | Verifies per-frame random nonces (`nonce_...`) and drops stale or intercepted frames (`>35s` drift). |
+| **6. Anti-DoS Rate Limiter** | Token-bucket per client | Caps requests at **12 requests / 6 seconds** to protect against runaway client loops and server flooding. |
+| **7. Zero-Trust Local Fill (`fill_local`)** | Whitelisted vault keys | Sensitive credentials (Aadhaar, PAN, email, phone) are resolved from local encrypted vault. **Actual secrets never touch the network**. |
+| **8. On-Device Search History Vault** | `chrome.storage.local` (Max 20 items) | User search queries and task logs remain 100% client-side with zero cloud telemetry or tracking. |
+| **9. Redaction Dilation Buffer** | `+10%` spatial bounding box padding | Eliminates visual edge-bleed on blurred avatars and blacked-out form boxes. |
+| **10. Content Security Policy (CSP)** | `script-src 'self' 'wasm-unsafe-eval'` | Restricts extension context to trusted local code; completely bans `eval()` and arbitrary remote script execution. |
 
 ---
 
@@ -180,10 +184,10 @@ d:\Projects\SIH\
 ├── extension/                       # Chrome Extension (Manifest V3)
 │   ├── manifest.json                # MV3 config with activeTab & offscreen permissions
 │   ├── background/
-│   │   └── service-worker.js        # Viewport capture, WebSocket manager, auto-navigation
+│   │   └── service-worker.js        # Viewport capture, WebSocket manager, 20-search history
 │   ├── content/
 │   │   ├── dom-analyzer.js          # Accessibility tree & form PII detector
-│   │   ├── action-executor.js       # Action runner + human-like input events + UI HUD
+│   │   ├── action-executor.js       # Action runner + 1-click Auto-Fill + self-minimizing HUD
 │   │   └── content-bridge.js        # Content script message bridge
 │   ├── offscreen/
 │   │   ├── offscreen.html           # Offscreen document for WebGPU/Canvas processing
@@ -192,15 +196,16 @@ d:\Projects\SIH\
 │   │   └── redaction-canvas.js      # Blackout, Gaussian blur & token overlay engine
 │   ├── lib/
 │   │   ├── pii-regex.js             # Indian Aadhaar, PAN, Phone, Email, Credit Card regex
+│   │   ├── vault-crypto.js          # AES-GCM 256-bit + PBKDF2 local vault encryption engine
 │   │   └── payload-builder.js       # Assembles safe sanitized multi-modal packets with nonces
 │   ├── popup/
-│   │   ├── popup.html               # Extension HUD with enlarged frame modal
-│   │   ├── popup.css                # Dark-mode dashboard styling with lightbox
-│   │   └── popup.js                 # Telemetry metrics & live sanitized preview
-│   └── icons/                       # Extension icon assets (16, 48, 128px)
+│   │   ├── popup.html               # Extension HUD + Auto-Fill + History + Encrypted Vault
+│   │   ├── popup.css                # Dark-mode dashboard styling with neon cyber-badge
+│   │   └── popup.js                 # Telemetry metrics, AES-GCM vault manager & frame preview
+│   └── icons/                       # Cybernetic AI Robot Head with Safety Lock (16, 48, 128, 512px)
 ├── server/                          # FastAPI Backend & Agent Gateway
 │   ├── .env.example                 # Environment variables template
-│   ├── main.py                      # FastAPI app + WebSocket endpoint + Static demo mount
+│   ├── main.py                      # FastAPI app + WebSocket endpoint + 5-portal demo mount
 │   ├── ws_handler.py                # WebSocket connection manager
 │   ├── config.py                    # Provider settings (Groq / vLLM / Autonomous fallback)
 │   ├── requirements.txt             # Python dependencies
@@ -211,10 +216,10 @@ d:\Projects\SIH\
 │   │   └── security_guard.py        # Cybersecurity filters (Injection, rate limit, sandbox)
 │   └── vlm/
 │       └── vlm_client.py            # Universal semantic web reasoner + VLM adapters
-├── testbed/                         # Interactive Test Portal for Live Demos
-│   ├── index.html                   # National Citizen Services & Flight Booking Portal
+├── testbed/                         # Interactive Multi-Domain Test Portals
+│   ├── index.html                   # Citizen, Flight, Health, Banking & ISRO Grant Portals
 │   ├── testbed.css                  # Modern portal styling
-│   └── testbed.js                   # Interactive demo logic
+│   └── testbed.js                   # Interactive demo logic & validation
 └── scripts/
     ├── start_server.bat             # One-click Windows server launcher
     └── test_redaction.py            # Pytest automated test suite (6/6 passing)
