@@ -148,6 +148,9 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 2. **Context-Aware Visual Redaction:** Sensitive elements are redacted locally using **Blackout masks, Gaussian Blur, and Pixelation** with semantic placeholder tokens (e.g. `[PII_AADHAAR]`, `[PASSWORD_MASK]`, `[USER_AVATAR]`).
 3. **Structured VLM Reasoning:** Transmits *only* sanitized frames + structural accessibility trees over encrypted WebSockets to a central VLM (Qwen2.5-VL-7B / Groq Llama-3.2-Vision / Universal Web Reasoner).
 4. **Zero-Trust `fill_local` Protocol:** When the server VLM needs to fill user credentials, it instructs the client which field to target; the extension fills the value directly from local encrypted storage, **never transmitting the secret over the network**.
+5. **Auto-Minimizing In-Page Floating HUD:** The floating execution overlay provides live visual feedback and automatically transitions upon task completion into a discreet status capsule (`🤖 ISRO Agent · Done ✓`), preventing screen obstruction while retaining 1-click expansion.
+6. **Local 20-Search & Task History Vault:** All search queries, objectives, step counts, and PII telemetry are stored 100% locally on the user's machine (`chrome.storage.local`) with a 20-item FIFO limit and instant 1-click re-run capabilities.
+7. **Organic Search Result Router & Noise Filter:** Bypasses search engine skip/accessibility boilerplate links and accurately selects high-relevance organic destination targets (e.g. LeetCode problems, GitHub repositories, ISRO portals).
 
 ---
 
@@ -161,8 +164,9 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 | **4. Anti-Replay & Timestamp Freshness** | Cryptographic Nonce + Epoch Verification | Verifies per-frame random nonces (`nonce_...`) and drops stale or intercepted frames (`>35s` drift). |
 | **5. Anti-DoS Rate Limiter** | Token-bucket per client | Caps requests at **12 requests / 6 seconds** to protect against runaway client loops and server flooding. |
 | **6. Zero-Trust Local Vault (`fill_local`)** | Whitelisted vault keys | Sensitive credentials (Aadhaar, PAN, email, phone) are stored locally in `chrome.storage.local`. Server instructs *which* field to fill; **actual values never touch the network**. |
-| **7. Redaction Dilation Buffer** | `+10%` spatial bounding box padding | Eliminates visual edge-bleed on blurred avatars and blacked-out form boxes. |
-| **8. Content Security Policy (CSP)** | `script-src 'self' 'wasm-unsafe-eval'` | Restricts extension context to trusted local code; completely bans `eval()` and arbitrary remote script execution. |
+| **7. On-Device Search History Vault** | `chrome.storage.local` (Max 20 items) | User search queries and task logs remain 100% client-side with zero cloud telemetry or tracking. |
+| **8. Redaction Dilation Buffer** | `+10%` spatial bounding box padding | Eliminates visual edge-bleed on blurred avatars and blacked-out form boxes. |
+| **9. Content Security Policy (CSP)** | `script-src 'self' 'wasm-unsafe-eval'` | Restricts extension context to trusted local code; completely bans `eval()` and arbitrary remote script execution. |
 
 ---
 
@@ -252,6 +256,8 @@ python main.py
    - **Local Perception:** Redaction runs on-device in `<200ms`.
    - **Enlargeable Frame Viewer:** Click on the preview box or **`🔍 Enlarge Frame`** to open the full-resolution sanitized frame in a lightbox modal.
    - **Zero-Trust Actuation:** Target elements are highlighted and interacted with automatically.
+   - **Self-Minimizing In-Page HUD:** Once the task reaches completion, the HUD automatically minimizes into a floating `🤖 ISRO Agent · Done ✓` pill at the bottom-right corner.
+   - **1-Click Local Search History (Last 20):** Click **`🕒 Recent (20)`** or **`🕒 History (20)`** in the popup to browse past searches with exact timestamps, masked PII counts, and instant 1-click re-run.
 
 ---
 
