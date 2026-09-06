@@ -258,7 +258,20 @@
         if (isElementVisible(el, rect)) {
           // Extract text label while scrubbing sensitive values
           let rawText = (el.textContent || el.value || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim();
-          
+          const lowerText = rawText.toLowerCase();
+
+          // Filter out utility / accessibility skip boilerplate links
+          const isUtilityBoilerplate = 
+            lowerText.includes('accessibility help') || 
+            lowerText.includes('accessibility feedback') || 
+            lowerText.includes('skip to main content') || 
+            lowerText.includes('skip to content') ||
+            lowerText.includes('screen reader');
+
+          if (isUtilityBoilerplate) {
+            return; // Skip noisy navigation boilerplate
+          }
+
           // Scrub potential PII from the accessibility tree text
           if (el.type === 'password') {
             rawText = '[PASSWORD_FIELD]';
@@ -269,14 +282,20 @@
             });
           }
 
+          // Check if element is inside a search result container or main content
+          const isSearchResult = !!el.closest('#search, #rso, .g, .yuRUbf, [data-sokoban-container], [role="main"], article');
+          const anchorHref = el.getAttribute('href') || (el.closest('a') ? el.closest('a').getAttribute('href') : null);
+
           tree.push({
             tag: tag,
             role: role || tag,
-            text: rawText.substring(0, 60),
+            text: rawText.substring(0, 80),
             placeholder: el.getAttribute('placeholder') || null,
             ariaLabel: el.getAttribute('aria-label') || null,
             id: el.id || null,
             type: el.getAttribute('type') || null,
+            href: anchorHref,
+            isSearchResult: isSearchResult,
             disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
             selector: generateUniqueSelector(el),
             bounds: {
@@ -290,7 +309,9 @@
       }
     });
 
-    return tree.slice(0, 75); // Cap to 75 most relevant elements to optimize token size
+    // Prioritize search results and main content elements first, then others
+    tree.sort((a, b) => (b.isSearchResult ? 1 : 0) - (a.isSearchResult ? 1 : 0));
+    return tree.slice(0, 120); // Expanded cap for deep search result scanning
   }
 
   // Global API on window for Content Bridge

@@ -161,10 +161,16 @@ class VLMInferenceClient:
             if w == 'three' or w == '3':
                 keywords.extend(['3sum', '3-sum', 'threesum'])
 
-        # ── 1. Search Result Link Matching (High Priority for Search Results) ──
+        # ── 1. Search Result Link & Organic Navigation Matching ──
         # If links on the page match the target subject (e.g. "4Sum - LeetCode", "Two Sum - LeetCode")
         best_link = None
         best_link_score = 0
+
+        EXCLUDED_LINK_NOISE = [
+            'accessibility', 'skip to', 'screen reader', 'support.google.com',
+            'accounts.google.com', 'policies.google.com', 'preferences', 'terms', 'privacy',
+            'feedback', 'google apps', 'sign in', 'cookie', 'websearch/answer'
+        ]
 
         for el in accessibility_tree:
             sel = el.get('selector', '')
@@ -174,20 +180,40 @@ class VLMInferenceClient:
             role = el.get('role', '')
             text = (el.get('text') or '').lower()
             aria = (el.get('ariaLabel') or '').lower()
-            combined_text = f"{text} {aria}"
+            href = (el.get('href') or '').lower()
+            is_search_result = el.get('isSearchResult', False)
+            combined_text = f"{text} {aria} {href}"
 
-            if tag == 'a' or role == 'link' or tag == 'h3' or tag == 'h2':
+            # Skip noise / utility / accessibility links
+            if any(noise in combined_text for noise in EXCLUDED_LINK_NOISE):
+                continue
+
+            if tag in ['a', 'h3', 'h2', 'span'] or role in ['link', 'heading']:
                 score = 0
+
+                # Search result container bonus
+                if is_search_result:
+                    score += 10
+
                 for kw in keywords:
-                    if kw in combined_text:
-                        score += 5
                     if kw in text:
-                        score += 3
+                        score += 6
+                    elif kw in combined_text:
+                        score += 4
+                    if href and kw in href:
+                        score += 8
                 
                 # Bonus if multiple keywords match in same link
                 matched_kws = sum(1 for kw in raw_words if kw in combined_text)
                 if matched_kws >= 2:
-                    score += 15
+                    score += 25
+                if matched_kws >= 3:
+                    score += 40
+
+                # Massive priority if domain name is in href (e.g. leetcode.com, github.com)
+                for dom_key in ['leetcode', 'github', 'wikipedia', 'youtube', 'isro', 'amazon']:
+                    if dom_key in goal_lower and dom_key in href:
+                        score += 35
 
                 if score > best_link_score:
                     best_link_score = score
@@ -195,11 +221,11 @@ class VLMInferenceClient:
 
         if best_link and best_link_score >= 8:
             sel = best_link.get('selector')
-            title = best_link.get('text') or sel
+            title = best_link.get('text') or best_link.get('href') or sel
             return ActionCommand(
                 action=ActionType.CLICK,
                 selector=sel,
-                reasoning=f"Clicking matching link: '{title}'"
+                reasoning=f"Clicking organic result link: '{title}'"
             )
 
         # ── 2. In-Page Search Input Bar Discovery ──
