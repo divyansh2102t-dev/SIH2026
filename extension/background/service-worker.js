@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Background Service Worker: Orchestrates Capture, Auto-Navigation, Dynamic Injection & WebSockets
+ * Background Service Worker: Robust Multi-Page Navigation, Auto-Retry Injection & Agent Orchestration
  */
 
 importScripts('../lib/pii-regex.js', '../lib/payload-builder.js');
@@ -14,9 +14,12 @@ let maxIterations = 10;
 let previousActions = [];
 let serverUrl = 'ws://127.0.0.1:8000/ws';
 
-// ── 1. Smart URL Resolver for Internal / New Tab Pages ──
+// ── 1. Smart URL & Domain Resolver ──
 
 const POPULAR_DOMAINS = {
+  sih: 'https://sih.gov.in',
+  'smart india hackathon': 'https://sih.gov.in',
+  isro: 'https://www.isro.gov.in',
   leetcode: 'https://leetcode.com',
   github: 'https://github.com',
   google: 'https://www.google.com',
@@ -34,49 +37,77 @@ const POPULAR_DOMAINS = {
 function resolveTargetUrlFromGoal(goal) {
   const g = goal.toLowerCase().trim();
 
-  // Check if explicit URL is in the goal
+  // Check explicit full URL
   const urlMatch = goal.match(/https?:\/\/[^\s]+/i);
   if (urlMatch) return urlMatch[0];
 
-  // Check popular domains mentioned in goal
+  // Check mapped domains
   for (const [key, domainUrl] of Object.entries(POPULAR_DOMAINS)) {
     if (g.includes(key)) {
       return domainUrl;
     }
   }
 
-  // Extract search term or fallback to Google Search
+  // Fallback to Google Search
   const searchMatch = goal.match(/(?:search|find|lookup|for|open|go to)\s+(?:for\s+)?["']?([^"']+)["']?/i);
   const query = searchMatch ? searchMatch[1].trim() : goal.trim();
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
-// ── 2. Dynamic Content Script Injection Helper ──
+// ── 2. Robust Tab Readiness & Content Script Injection with Retries ──
 
-async function ensureContentScriptInjected(tabId) {
-  try {
-    const ping = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
-    if (ping && ping.success) return true;
-  } catch (e) {
-    console.log(`[Service Worker] Injecting content scripts into Tab ${tabId}...`);
+async function waitForTabReady(tabId, maxWaitMs = 10000) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWaitMs) {
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: [
-          'lib/pii-regex.js',
-          'content/dom-analyzer.js',
-          'content/action-executor.js',
-          'content/content-bridge.js'
-        ]
-      });
-      await new Promise(r => setTimeout(r, 250));
-      return true;
-    } catch (injectErr) {
-      console.error('[Service Worker] Failed to inject content scripts:', injectErr);
-      throw new Error(`Cannot access this tab (${injectErr.message}).`);
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.status === 'complete') {
+        // Small settle buffer for dynamic SPA frameworks (React/Vue)
+        await new Promise(r => setTimeout(r, 300));
+        return true;
+      }
+    } catch (e) {
+      // Tab may be reloading
     }
+    await new Promise(r => setTimeout(r, 200));
   }
   return true;
+}
+
+async function ensureContentScriptInjectedWithRetry(tabId, retries = 4) {
+  await waitForTabReady(tabId);
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const ping = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
+      if (ping && ping.success) return ping;
+    } catch (e) {
+      console.log(`[Service Worker] Injecting content scripts into Tab ${tabId} (Attempt ${attempt}/${retries})...`);
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: [
+            'lib/pii-regex.js',
+            'content/dom-analyzer.js',
+            'content/action-executor.js',
+            'content/content-bridge.js'
+          ]
+        });
+        await new Promise(r => setTimeout(r, 300 * attempt));
+        
+        // Test connection after injection
+        const check = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
+        if (check && check.success) return check;
+      } catch (injectErr) {
+        console.warn(`[Service Worker] Injection attempt ${attempt} warning:`, injectErr.message);
+        if (attempt === retries) {
+          throw new Error(`Cannot attach agent to this page (${injectErr.message}).`);
+        }
+        await new Promise(r => setTimeout(r, 400));
+      }
+    }
+  }
+  throw new Error('Tab communication timeout after page navigation.');
 }
 
 // ── 3. Offscreen Document Lifecycle ──
@@ -167,19 +198,16 @@ async function runAgentStep(tabId) {
   });
 
   try {
-    // A. Ensure content scripts are active in tab
-    await ensureContentScriptInjected(tabId);
-
-    // B. Request DOM Analysis from Content Script
-    const domResponse = await chrome.tabs.sendMessage(tabId, { action: 'SCAN_PAGE_DOM' });
+    // A. Ensure tab is ready and content scripts are active
+    const domResponse = await ensureContentScriptInjectedWithRetry(tabId);
     if (!domResponse || !domResponse.success) {
       throw new Error('Failed to extract DOM state from active tab');
     }
 
-    // C. Capture Viewport Screenshot
+    // B. Capture Viewport Screenshot
     const rawScreenshot = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
 
-    // D. Perform Offscreen Visual & Regex Redaction
+    // C. Perform Offscreen Visual & Regex Redaction
     await ensureOffscreenDocument();
     const redactResponse = await chrome.runtime.sendMessage({
       target: 'OFFSCREEN',
@@ -205,7 +233,7 @@ async function runAgentStep(tabId) {
       clientTimeMs: clientDuration
     });
 
-    // E. Build Sanitized Payload
+    // D. Build Sanitized Payload with Cryptographic Nonce
     const payload = buildSanitizedPayload({
       sessionId: `sih_${clientId}`,
       userGoal: currentGoal,
@@ -221,7 +249,7 @@ async function runAgentStep(tabId) {
       previousActions: previousActions
     });
 
-    // F. Transmit to Server via WebSocket
+    // E. Transmit to Server via WebSocket
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       throw new Error('Server WebSocket is not connected. Please ensure backend server is running on localhost:8000');
     }
@@ -242,11 +270,18 @@ async function runAgentStep(tabId) {
       totalE2ETimeMs: clientDuration + serverDuration
     });
 
-    // G. Execute Action on Web Page
-    const executionResult = await chrome.tabs.sendMessage(tabId, {
-      action: 'EXECUTE_AGENT_ACTION',
-      command: actionCommand
-    });
+    // F. Execute Action on Web Page
+    let executionResult = null;
+    try {
+      executionResult = await chrome.tabs.sendMessage(tabId, {
+        action: 'EXECUTE_AGENT_ACTION',
+        command: actionCommand
+      });
+    } catch (execErr) {
+      // If action caused page unload (e.g. navigation / link click), handle smoothly
+      console.log('[Agent Loop] Action triggered page transition:', execErr.message);
+      executionResult = { success: true, pageTransition: true };
+    }
 
     previousActions.push({
       iteration: currentIteration,
@@ -254,10 +289,15 @@ async function runAgentStep(tabId) {
       result: executionResult
     });
 
-    // H. Check Completion Condition
+    // G. Check Completion Condition
     if (actionCommand.action === 'done' || executionResult?.complete) {
       stopAgentLoop(`Goal achieved: ${actionCommand.summary || 'Task Complete'}`);
       return;
+    }
+
+    // If action was a navigation or click on link, wait for new page to load
+    if (actionCommand.action === 'navigate' || executionResult?.pageTransition) {
+      await waitForTabReady(tabId, 6000);
     }
 
     // Schedule next step if still running
@@ -311,45 +351,30 @@ async function startAgentLoop(goal, tabId, tabUrl = '') {
   previousActions = [];
   connectWebSocket();
 
-  // Check if active tab is a browser internal / newtab page
+  // Check if active tab is a browser internal page or user requested a specific destination
   const isInternal = !tabUrl || 
                      tabUrl.startsWith('chrome://') || 
                      tabUrl.startsWith('chrome-extension://') || 
                      tabUrl.startsWith('edge://') || 
                      tabUrl.startsWith('about:');
 
-  if (isInternal) {
+  const gLower = goal.toLowerCase();
+  const directTarget = Object.keys(POPULAR_DOMAINS).find(k => gLower.includes(k) && (gLower.includes('open') || gLower.includes('go to') || gLower.includes('visit')));
+
+  if (isInternal || directTarget) {
     const targetUrl = resolveTargetUrlFromGoal(goal);
-    console.log(`[Service Worker] Internal page detected. Auto-navigating Tab ${tabId} to ${targetUrl}...`);
+    console.log(`[Service Worker] Navigating Tab ${tabId} directly to ${targetUrl}...`);
     broadcastToPopup({
       type: 'AGENT_STEP_START',
       iteration: 1,
       goal: `Navigating to ${targetUrl}...`
     });
 
-    // Navigate the tab
     await chrome.tabs.update(tabId, { url: targetUrl });
-
-    // Wait for the tab to finish loading
-    const onTabUpdated = (updatedTabId, changeInfo) => {
-      if (updatedTabId === tabId && changeInfo.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(onTabUpdated);
-        console.log(`[Service Worker] Tab ${tabId} finished loading. Starting perception loop...`);
-        setTimeout(() => {
-          runAgentStep(tabId);
-        }, 1000); // 1s buffer for full DOM readiness
-      }
-    };
-    chrome.tabs.onUpdated.addListener(onTabUpdated);
-
-    // Timeout safety fallback (5s)
+    await waitForTabReady(tabId, 8000);
     setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(onTabUpdated);
-      if (isLoopRunning && currentIteration === 0) {
-        runAgentStep(tabId);
-      }
-    }, 5000);
-
+      runAgentStep(tabId);
+    }, 1000);
     return;
   }
 
