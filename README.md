@@ -10,86 +10,85 @@
 
 ---
 
-## 🏛️ 1. 3D Layered System Architecture
+## 🏛️ 1. Interactive System Design Architecture
 
-```
-   ┌────────────────────────────────────────────────────────────────────────────────────────┐
-  ╱                                                                                        ╱│
- ┌────────────────────────────────────────────────────────────────────────────────────────┐ │
- │ 🌐 LAYER 1: CLIENT-SIDE VIEWPORT & DOM PERCEPTION (Local Browser)                     │ │
- │                                                                                        │ │
- │   ┌───────────────────────┐         ┌────────────────────────┐                         │ │
- │   │  Active Browser Tab   │────────▶│ DOM Accessibility Tree │                         │ │
- │   │  (Google, Portal, UI) │         │ (Filtered Nodes/Roles) │                         │ │
- │   └──────────┬────────────┘         └───────────┬────────────┘                         │ │
- └──────────────┼──────────────────────────────────┼──────────────────────────────────────┘ │
-   │            │ Tab Capture                      │ DOM Semantic Scan                      │
-   │            ▼                                  ▼                                        │
-   │ ┌────────────────────────────────────────────────────────────────────────────────────┐ │
-  ╱  │ 🔒 LAYER 2: ON-DEVICE PRIVACY FIREWALL (WebGPU Compute Engine)                    │╱│
- ┌───┴────────────────────────────────────────────────────────────────────────────────────┴─┐
- │                                                                                           │
- │   ┌───────────────────┐     ┌─────────────────────┐     ┌─────────────────────────────┐   │
- │   │ Layer 1: DOM Form │     │ Layer 2: Indian PII │     │ Layer 3: ML Vision Detector │   │
- │   │  Input Attribute  │     │   Regex Matcher     │     │  Avatars, Photos, ID Cards  │   │
- │   │ (Passwords, Card) │     │ (Aadhaar, PAN, Tel) │     │ (BlazeFace + YOLOv8n ONNX)  │   │
- │   └─────────┬─────────┘     └──────────┬──────────┘     └──────────────┬──────────────┘   │
- │             └──────────────────────────┼───────────────────────────────┘                  │
- │                                        ▼                                                  │
- │                ┌───────────────────────────────────────────────┐                          │
- │                │   OffscreenCanvas Dynamic Redaction Engine    │                          │
- │                │  (Blackout, Blur, Pixelate + +10% Dilation)   │                          │
- │                └───────────────────────┬───────────────────────┘                          │
- └────────────────────────────────────────┼──────────────────────────────────────────────────┘
-   │                                      │
-   │                                      │ Sanitized JPEG Frame + Semantic Injected Tokens
-   │                                      │ (Zero Raw PII Transmitted Across Network)
-   ▼                                      ▼
- ┌────────────────────────────────────────────────────────────────────────────────────────┐
- │ 🌐 LAYER 3: ENCRYPTED TRANSPORT & REPLAY PROTECTION (TLS 1.3 Tunnel)                  │
- │                                                                                        │
- │       [ Client Nonce: nonce_... ] ── WSS Frame ──▶ [ Unix Timestamp Freshness ]        │
- └────────────────────────────────────────┬───────────────────────────────────────────────┘
-                                          │
-                                          ▼
- ┌────────────────────────────────────────────────────────────────────────────────────────┐
- │ 🛡️ LAYER 4: ZERO-TRUST CYBERSECURITY SANDBOX (Server Gatekeeper)                       │
- │                                                                                        │
- │   ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────────┐   │
- │   │  Anti-Prompt Injection │  │  Token-Bucket Rate     │  │  Action Whitelist &    │   │
- │   │  Adversarial Sanitizer │  │  Limiter (12 req / 6s) │  │  Protocol Blocklist    │   │
- │   └────────────────────────┘  └────────────────────────┘  └────────────────────────┘   │
- └────────────────────────────────────────┬───────────────────────────────────────────────┘
-                                          │
-                                          ▼
- ┌────────────────────────────────────────────────────────────────────────────────────────┐
- │ 🧠 LAYER 5: MULTI-MODAL REASONING & VLM BRAIN (Cloud / Edge Inference)                 │
- │                                                                                        │
- │   ┌─────────────────────────────────────┐     ┌────────────────────────────────────┐   │
- │   │ Vision-Language Reasoning           │     │ Universal Semantic Web Reasoner    │   │
- │   │ (Qwen2.5-VL-7B / Groq Llama-3.2)    │ ◀─▶ │ (Intent Parser & DOM Scorer)       │   │
- │   └──────────────────┬──────────────────┘     └─────────────────┬──────────────────┘   │
- │                      └────────────────────────┬─────────────────┘                      │
- │                                               ▼                                        │
- │                        ┌─────────────────────────────────────────────┐                 │
- │                        │    LangGraph ReAct Action Plan Generator    │                 │
- │                        │  {"action":"click|type|fill_local|done"}    │                 │
- │                        └──────────────────────┬──────────────────────┘                 │
- └───────────────────────────────────────────────┼────────────────────────────────────────┘
-  │                                              │
-  │                                              │ ActionCommand JSON Sent Back
-  │                                              ▼
-  │  ┌────────────────────────────────────────────────────────────────────────────────────┐
-  └─▶│ ⚡ LAYER 6: CLIENT-SIDE LOCAL ACTUATION (Zero-Trust DOM Execution)                 │
-     │                                                                                    │
-     │  • fill_local: Reads credential from local chrome.storage (NEVER LEAVES DEVICE)    │
-     │  • Action Highlight: Visual target box & In-Page Floating Agent HUD                │
-     └────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    classDef clientBox fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef securityBox fill:#1e1b4b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+    classDef serverBox fill:#0b0f19,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef actionBox fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef subBox fill:#1e293b,stroke:#475569,stroke-width:1px,color:#cbd5e1;
+
+    subgraph ClientTier ["🖥️ CLIENT TIER: Chrome Extension (Manifest V3)"]
+        direction TB
+
+        subgraph ViewportLayer ["1. Viewport & DOM Capture"]
+            ActiveTab["🌐 Active Browser Tab<br/>(Google, Portal, E-Commerce)"]
+            A11yTree["📑 DOM Accessibility Tree<br/>(Filtered Interactive Elements)"]
+        end
+
+        subgraph PrivacyFirewall ["2. On-Device Privacy Firewall (WebGPU Compute)"]
+            Layer1["⚡ Layer 1: DOM Form Scanner<br/>(Passwords, Credit Cards, Inputs)"]
+            Layer2["🔍 Layer 2: Indian PII Regex<br/>(Aadhaar, PAN, Phone, Email)"]
+            Layer3["👁️ Layer 3: ML Vision Detector<br/>(BlazeFace + YOLOv8n ONNX)"]
+            Redactor["🎨 Canvas Redaction Engine<br/>(Blackout, Blur, Pixelate + 10% Dilation)"]
+        end
+
+        subgraph LocalVaultGroup ["3. Zero-Trust Local Storage"]
+            LocalVault[("🔐 Local Encrypted Vault<br/>(chrome.storage.local)")]
+            ContentRunner["⚡ DOM Action Executor<br/>(Target Highlight & Human-Like Events)"]
+        end
+    end
+
+    subgraph TransportLayer ["🌐 SECURE TRANSPORT: TLS 1.3 WebSocket Tunnel"]
+        Payload["📦 Sanitized Payload<br/>• Redacted Frame with [PII_*] Tokens<br/>• Structural Accessibility Tree<br/>• Cryptographic Nonce & Timestamp"]
+    end
+
+    subgraph ServerTier ["☁️ SERVER TIER: FastAPI & Multi-Modal Reasoning Hub"]
+        direction TB
+
+        subgraph SecurityLayer ["4. Zero-Trust Cybersecurity Sandbox"]
+            AntiInject["🛡️ Anti-Prompt Injection<br/>(Adversarial HTML Filter)"]
+            RateLimit["⏱️ Token-Bucket Rate Limiter<br/>(12 req / 6s)"]
+            Sandbox["🔒 Action Sandbox &<br/>Protocol Blocklist"]
+        end
+
+        subgraph ReasoningCore ["5. Multi-Modal Reasoning Engine"]
+            VLM["🧠 Vision-Language Model<br/>(Qwen2.5-VL-7B / Groq Llama-3.2)"]
+            Reasoner["⚙️ Universal Semantic Reasoner<br/>(Deterministic Intent Parser)"]
+            ReAct["🔄 LangGraph ReAct Loop<br/>(Stateful Plan Generator)"]
+        end
+    end
+
+    %% Flow Connections
+    ActiveTab -->|Viewport Capture| PrivacyFirewall
+    ActiveTab -->|DOM Traversal| A11yTree
+    Layer1 --> Redactor
+    Layer2 --> Redactor
+    Layer3 --> Redactor
+    A11yTree --> Payload
+    Redactor -->|Sanitized Frame| Payload
+
+    Payload -->|Encrypted WSS| SecurityLayer
+    SecurityLayer -->|Sanitized State| ReasoningCore
+    VLM <--> ReAct
+    Reasoner <--> ReAct
+
+    ReAct -->|Structured ActionCommand JSON| ContentRunner
+    LocalVault -.->|Zero-Trust Local Fill| ContentRunner
+    ContentRunner -->|Execute Click / Type / Scroll| ActiveTab
+
+    %% Styling
+    class ActiveTab,A11yTree,Layer1,Layer2,Layer3,Redactor,Payload subBox;
+    class LocalVault,ContentRunner actionBox;
+    class AntiInject,RateLimit,Sandbox securityBox;
+    class VLM,Reasoner,ReAct serverBox;
 ```
 
 ---
 
-## 📌 2. Project Overview & Problem Statement
+## 📌 2. Project Overview & Innovation
 Traditional agentic AI pipelines transmit raw screenshots and screen state directly to remote servers or cloud VLMs, leaking sensitive user data (passwords, Aadhaar numbers, PAN cards, biometrics, financial info).
 
 This prototype implements an **On-Device Privacy Firewall** inside a Chrome Extension (Manifest V3):
@@ -102,23 +101,32 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 
 ## 🔒 3. Cybersecurity Defense Matrix
 
-```
-       ┌──────────────────┐
-       │ Adversarial Web  │─── Attempt Prompt Injection ───┐
-       │    Page Input    │                                │
-       └──────────────────┘                                ▼
-                                                ┌─────────────────────┐
-                                                │   SecurityGuard     │──▶ Neutralize Payload:
-                                                │ Sanitizer & Sandbox │    [SANITIZED_CONTENT]
-                                                └──────────┬──────────┘
-                                                           │
-                                ┌──────────────────────────┴──────────────────────────┐
-                                ▼                                                     ▼
-                     ┌──────────────────────┐                              ┌──────────────────────┐
-                     │  Protocol Blocklist  │                              │ Destructive Action   │
-                     │  Blocks javascript:, │                              │ Interceptor (delete, │
-                     │  data:, file:, etc.  │                              │ format, reset)       │
-                     └──────────────────────┘                              └──────────────────────┘
+```mermaid
+flowchart LR
+    classDef threat fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fecaca;
+    classDef defense fill:#022c22,stroke:#10b981,stroke-width:2px,color:#a7f3d0;
+    classDef safe fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+
+    Threat["⚠️ Untrusted Web Page<br/>(Hidden Prompts, Injections, Tracking)"]
+    
+    subgraph Defenses ["🛡️ Multi-Layer Cybersecurity Filters"]
+        AntiInj["Anti-Prompt Injection<br/>Sanitizer"]
+        ProtoFilter["Protocol Blocklist<br/>(Blocks javascript:, data:, file:)"]
+        RateLim["Token-Bucket Rate Limiter<br/>(Anti-DoS)"]
+        ReplayGuard["Cryptographic Nonce<br/>Replay Defense"]
+    end
+
+    SafeAction["✅ Verified ActionCommand<br/>(click, type, fill_local, done)"]
+
+    Threat --> AntiInj
+    AntiInj --> ProtoFilter
+    ProtoFilter --> RateLim
+    RateLim --> ReplayGuard
+    ReplayGuard --> SafeAction
+
+    class Threat threat;
+    class AntiInj,ProtoFilter,RateLim,ReplayGuard defense;
+    class SafeAction safe;
 ```
 
 | Security Vector | Implementation Detail | Protection Guarantee |
@@ -139,7 +147,7 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 ```
 d:\Projects\SIH\
 ├── .gitignore                       # Git exclusion rules (protects .env, keys, caches)
-├── README.md                        # Complete documentation & 3D system design
+├── README.md                        # Complete documentation & interactive Mermaid design
 ├── SIH_2026_PS26171_Implementation_Plan.pdf # 5-page Technical Blueprint PDF
 ├── extension/                       # Chrome Extension (Manifest V3)
 │   ├── manifest.json                # MV3 config with activeTab & offscreen permissions
@@ -171,7 +179,7 @@ d:\Projects\SIH\
 │   ├── agent/
 │   │   ├── action_schema.py         # Pydantic ActionCommand schema with nonce
 │   │   ├── prompt_templates.py      # Redaction-aware VLM prompts
-│   │   ├── react_agent.py           # Stateful ReAct loop with PII safety guardrails
+│   │   └── react_agent.py           # Stateful ReAct loop with PII safety guardrails
 │   │   └── security_guard.py        # Cybersecurity filters (Injection, rate limit, sandbox)
 │   └── vlm/
 │       └── vlm_client.py            # Universal semantic web reasoner + VLM adapters
