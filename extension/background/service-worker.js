@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Background Service Worker: Universal Intent Routing, Multi-Page Navigation & Privacy Pipeline
+ * Background Service Worker: Universal Intent Routing, Domain-Switching Navigation & Privacy Pipeline
  */
 
 importScripts('../lib/pii-regex.js', '../lib/payload-builder.js');
@@ -14,12 +14,25 @@ let maxIterations = 10;
 let previousActions = [];
 let serverUrl = 'ws://127.0.0.1:8000/ws';
 
-// ── 1. Smart Universal Search & Deep-Link Resolver ──
+// ── 1. Smart Universal Search & Domain Switch Resolver ──
+
+const POPULAR_DOMAINS = {
+  leetcode: 'https://leetcode.com',
+  github: 'https://github.com',
+  google: 'https://www.google.com',
+  wikipedia: 'https://www.wikipedia.org',
+  youtube: 'https://www.youtube.com',
+  sih: 'https://sih.gov.in',
+  isro: 'https://www.isro.gov.in',
+  amazon: 'https://www.amazon.in',
+  makemytrip: 'https://www.makemytrip.com',
+  irctc: 'https://www.irctc.co.in'
+};
 
 function resolveTargetUrlFromGoal(goal) {
   const g = goal.toLowerCase().trim();
 
-  // 1. Explicit URL check
+  // 1. Explicit URL in goal
   const urlMatch = goal.match(/https?:\/\/[^\s]+/i);
   if (urlMatch) return urlMatch[0];
 
@@ -28,29 +41,50 @@ function resolveTargetUrlFromGoal(goal) {
     return 'http://127.0.0.1:8000/demo/index.html';
   }
 
-  // 3. Pure single-word root domain check (e.g. "open leetcode", "go to youtube", "visit github")
+  // 3. Pure single-word domain command (e.g. "open leetcode", "go to youtube")
   const pureDomainMatch = g.match(/^(?:open|go to|visit|launch)\s+([a-z0-9]+)(?:\.com|\.org|\.in)?$/i);
   if (pureDomainMatch) {
     const domainName = pureDomainMatch[1].toLowerCase();
-    const common = {
-      leetcode: 'https://leetcode.com',
-      github: 'https://github.com',
-      google: 'https://www.google.com',
-      wikipedia: 'https://www.wikipedia.org',
-      youtube: 'https://www.youtube.com',
-      sih: 'https://sih.gov.in',
-      isro: 'https://www.isro.gov.in'
-    };
-    if (common[domainName]) return common[domainName];
+    if (POPULAR_DOMAINS[domainName]) return POPULAR_DOMAINS[domainName];
   }
 
-  // 4. Universal Web Discovery: For ANY specific query (e.g. "open four sum problem on leetcode", "search shoes on amazon")
-  // Clean command filler words
+  // 4. Clean search query for universal discovery
   const cleanQuery = goal
     .replace(/^(?:please\s+)?(?:open|search|find|lookup|look for|go to|navigate to)\s+/i, '')
     .trim();
 
   return `https://www.google.com/search?q=${encodeURIComponent(cleanQuery || goal)}`;
+}
+
+/**
+ * Checks if the user's goal requests navigating away from the current page
+ */
+function shouldNavigateAway(goal, currentUrl) {
+  if (!currentUrl) return true;
+  const g = goal.toLowerCase().trim();
+  const cUrl = currentUrl.toLowerCase();
+
+  // If on internal / newtab page
+  if (cUrl.startsWith('chrome://') || cUrl.startsWith('chrome-extension://') || cUrl.startsWith('edge://') || cUrl.startsWith('about:')) {
+    return true;
+  }
+
+  // If goal explicitly starts with navigation command: "open ...", "go to ...", "visit ...", "search ..."
+  if (/^(?:open|go to|visit|navigate to|search)\s+/i.test(g)) {
+    // Check if user is asking for a platform they are NOT currently on
+    for (const [key, domainUrl] of Object.entries(POPULAR_DOMAINS)) {
+      if (g.includes(key) && !cUrl.includes(key)) {
+        return true; // e.g. on github.com, but goal says "open leetcode..."
+      }
+    }
+
+    // If goal says "search ..." and user is NOT on Google / search engine
+    if (g.startsWith('search') && !cUrl.includes('google.com/search')) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ── 2. Robust Tab Readiness & Injection Helpers ──
@@ -245,7 +279,11 @@ async function runAgentStep(tabId) {
 
     // E. Transmit to Server via WebSocket
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      throw new Error('Server WebSocket is not connected. Please ensure backend server is running on localhost:8000');
+      connectWebSocket();
+      await new Promise(r => setTimeout(r, 600));
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        throw new Error('Server WebSocket is not connected. Please ensure backend server is running on localhost:8000');
+      }
     }
 
     const serverStartTime = performance.now();
@@ -288,7 +326,7 @@ async function runAgentStep(tabId) {
       return;
     }
 
-    // If action was a navigation or link click, wait for new page to settle
+    // If action was navigation or link click, wait for page to settle
     if (actionCommand.action === 'navigate' || executionResult?.pageTransition) {
       await waitForTabReady(tabId, 6000);
     }
@@ -335,7 +373,7 @@ function handleServerMessage(message) {
   }
 }
 
-// ── 7. Agent Control Functions with Auto-Navigation ──
+// ── 7. Agent Control Functions with Smart Domain Switching ──
 
 async function startAgentLoop(goal, tabId, tabUrl = '') {
   isLoopRunning = true;
@@ -344,16 +382,10 @@ async function startAgentLoop(goal, tabId, tabUrl = '') {
   previousActions = [];
   connectWebSocket();
 
-  // Check if active tab is internal or user is starting a fresh search from newtab
-  const isInternal = !tabUrl || 
-                     tabUrl.startsWith('chrome://') || 
-                     tabUrl.startsWith('chrome-extension://') || 
-                     tabUrl.startsWith('edge://') || 
-                     tabUrl.startsWith('about:');
-
-  if (isInternal) {
+  // Check if we need to navigate away from the current page to the target destination
+  if (shouldNavigateAway(goal, tabUrl)) {
     const targetUrl = resolveTargetUrlFromGoal(goal);
-    console.log(`[Service Worker] New tab detected. Auto-navigating Tab ${tabId} to ${targetUrl}...`);
+    console.log(`[Service Worker] Navigating Tab ${tabId} away from ${tabUrl} ➔ ${targetUrl}...`);
     broadcastToPopup({
       type: 'AGENT_STEP_START',
       iteration: 1,
@@ -368,7 +400,7 @@ async function startAgentLoop(goal, tabId, tabUrl = '') {
     return;
   }
 
-  // Normal live web page
+  // Normal live execution on current page
   console.log(`[Agent] Starting loop for goal: "${goal}" on Tab ${tabId}`);
   runAgentStep(tabId);
 }
