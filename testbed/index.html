@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>National Citizen & Travel Portal | ISRO Privacy Agent Demo</title>
+  <link rel="stylesheet" href="testbed.css">
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="emblem">🏛️</span>
+      <div>
+        <div class="nav-title">Digital Citizen & Travel Services</div>
+        <div class="nav-sub">National Identity & Logistics Portal</div>
+      </div>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-tab="citizenTab">📝 Citizen Verification</button>
+      <button class="nav-tab" data-tab="flightTab">✈️ VimanYatra Flight Booking</button>
+    </div>
+    <div class="nav-user">
+      <div class="avatar-box">
+        <div class="avatar-pic">👤</div>
+        <div class="user-meta">
+          <div class="user-name">Aditya Sharma</div>
+          <div class="user-role">Verified Citizen</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-container">
+    <!-- Banner -->
+    <div class="privacy-notice">
+      <span class="shield-icon">🛡️</span>
+      <div>
+        <strong>Privacy Testbed Active:</strong> This portal contains realistic PII (Aadhaar, PAN, Phone, Email, Avatars, Cards). The ISRO on-device vision agent will redact these locally before transmitting to the server VLM.
+      </div>
+    </div>
+
+    <!-- TAB 1: Citizen Verification Form -->
+    <div id="citizenTab" class="tab-content active">
+      <div class="portal-card">
+        <div class="card-header">
+          <h2>Citizen Identity Verification &amp; Pass Registration</h2>
+          <p>Please enter your registered credentials to request access to ISRO Space Centers.</p>
+        </div>
+
+        <form id="citizenForm" class="form-grid" onsubmit="event.preventDefault(); submitCitizenForm();">
+          <div class="form-group">
+            <label for="fullName">Full Name (as per Govt ID) <span class="req">*</span></label>
+            <input type="text" id="fullName" name="fullName" placeholder="Enter full name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Official Email Address <span class="req">*</span></label>
+            <input type="email" id="email" name="email" placeholder="name@domain.gov.in" required>
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Mobile Phone Number <span class="req">*</span></label>
+            <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210" required>
+          </div>
+
+          <div class="form-group">
+            <label for="aadhaar">Aadhaar Card UID (12 Digits) <span class="req">*</span></label>
+            <input type="text" id="aadhaar" name="aadhaar" placeholder="2345 6789 0123" maxlength="14" required>
+          </div>
+
+          <div class="form-group">
+            <label for="pan">PAN Card Number (10 Chars) <span class="req">*</span></label>
+            <input type="text" id="pan" name="pan" placeholder="ABCDE1234F" maxlength="10" required>
+          </div>
+
+          <div class="form-group">
+            <label for="purpose">Purpose of Access</label>
+            <select id="purpose" name="purpose">
+              <option value="research">Academic &amp; Space Research</option>
+              <option value="industry">Technical Industry Collaboration</option>
+              <option value="media">Official Press / Media Delegation</option>
+            </select>
+          </div>
+
+          <!-- Uploaded ID Card Preview (for Visual Model Redaction Testing) -->
+          <div class="form-group full-width">
+            <label>Government ID Proof Preview (Visual Testbed)</label>
+            <div class="id-card-preview">
+              <div class="id-card-badge">
+                <div class="id-chip">💳</div>
+                <div class="id-details">
+                  <div class="id-title">GOVERNMENT OF INDIA</div>
+                  <div class="id-number">UID: 2345 6789 0123</div>
+                  <div class="id-name">NAME: ADITYA SHARMA</div>
+                  <div class="id-dob">DOB: 15/08/1996</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions full-width">
+            <button type="submit" id="submitCitizenBtn" class="btn btn-primary">
+              🔒 Verify Identity &amp; Submit Application
+            </button>
+            <button type="button" id="resetBtn" class="btn btn-secondary" onclick="document.getElementById('citizenForm').reset();">
+              Clear Form
+            </button>
+          </div>
+        </form>
+
+        <div id="formSuccessMessage" class="success-banner" style="display: none;">
+          ✅ <strong>Verification Successful!</strong> Application #ISRO-2026-9812 has been submitted with Zero PII exposure.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: VimanYatra Flight Booking -->
+    <div id="flightTab" class="tab-content">
+      <div class="portal-card">
+        <div class="card-header">
+          <h2>✈️ VimanYatra Express Flight Search</h2>
+          <p>Book flights across Indian Space &amp; Science Research Corridors.</p>
+        </div>
+
+        <div class="flight-search-box">
+          <div class="flight-input-group">
+            <label>From City</label>
+            <input type="text" id="flightFrom" placeholder="e.g. Delhi (DEL)" value="">
+          </div>
+          <div class="flight-swap-btn">⇄</div>
+          <div class="flight-input-group">
+            <label>To City</label>
+            <input type="text" id="flightTo" placeholder="e.g. Mumbai (BOM)" value="">
+          </div>
+          <div class="flight-input-group">
+            <label>Travel Date</label>
+            <input type="date" id="flightDate" value="2026-09-15">
+          </div>
+          <button id="searchFlightBtn" class="btn btn-primary" onclick="searchFlights();">
+            🔍 Search Flights
+          </button>
+        </div>
+
+        <!-- Flight Results List -->
+        <div id="flightResultsList" class="flight-results" style="display: none; margin-top: 20px;">
+          <h3>Available Flights: DEL ➔ BOM (15 Sep 2026)</h3>
+          
+          <div class="flight-card">
+            <div class="flight-airline">🚀 Air Bharat (AB-402)</div>
+            <div class="flight-time">08:00 AM ➔ 10:15 AM (2h 15m · Non-stop)</div>
+            <div class="flight-price">₹ 4,850</div>
+            <button id="bookFlight1" class="btn btn-sm btn-primary" onclick="selectFlight('AB-402');">Select Flight</button>
+          </div>
+
+          <div class="flight-card">
+            <div class="flight-airline">🛰️ Vistara Space (UK-981)</div>
+            <div class="flight-time">11:30 AM ➔ 01:45 PM (2h 15m · Non-stop)</div>
+            <div class="flight-price">₹ 5,200</div>
+            <button id="bookFlight2" class="btn btn-sm btn-primary" onclick="selectFlight('UK-981');">Select Flight</button>
+          </div>
+        </div>
+
+        <div id="flightBookingConfirmed" class="success-banner" style="display: none; margin-top: 15px;">
+          🎉 <strong>Flight Confirmed!</strong> Seat reserved on Flight AB-402 (DEL ➔ BOM) for Sep 15, 2026.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="testbed.js"></script>
+</body>
+</html>
