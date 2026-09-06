@@ -228,23 +228,96 @@ class VLMInferenceClient:
                 reasoning=f"Clicking organic result link: '{title}'"
             )
 
-        # ── 2. In-Page Search Input Bar Discovery ──
-        # If the page has an interactive search input (like on LeetCode problems page or Google)
+        # ── 2. Multi-Domain Form & Encrypted Vault Credential Auto-Mapping ──
+        # Evaluates form controls against local vault keys (Name, Email, Phone, Aadhaar, PAN, Banking, Health)
+        for el in accessibility_tree:
+            sel = el.get('selector', '')
+            if not sel or sel in executed_selectors: continue
+
+            tag = el.get('tag', '')
+            inp_type = (el.get('type') or '').lower()
+            placeholder = (el.get('placeholder') or '').lower()
+            aria = (el.get('ariaLabel') or '').lower()
+            text = (el.get('text') or '').lower()
+            desc = f"{sel.lower()} {placeholder} {aria} {text} {inp_type}"
+
+            if tag in ['input', 'textarea']:
+                # Identity & Contact
+                if 'aadhaar' in desc or 'aadhar' in desc or 'uid' in desc:
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="aadhaar", reasoning="Entering Aadhaar from encrypted local vault")
+                if 'pan' in desc and not 'expand' in desc:
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="pan", reasoning="Entering PAN ID from encrypted local vault")
+                if 'email' in desc or inp_type == 'email':
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="email", reasoning="Entering email from encrypted local vault")
+                if 'phone' in desc or 'mobile' in desc or 'contact' in desc or inp_type == 'tel':
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="phone", reasoning="Entering phone number from encrypted local vault")
+                
+                # Healthcare & ABDM
+                if 'abha' in desc or 'health' in desc:
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="abhaId", reasoning="Entering ABHA Health ID from encrypted vault")
+
+                # Banking & Financials
+                if 'ifsc' in desc:
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="ifsc", reasoning="Entering IFSC Code from encrypted vault")
+                if 'upi' in desc or 'vpa' in desc:
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="upiId", reasoning="Entering UPI VPA from encrypted vault")
+                if any(b in desc for b in ['bankaccount', 'bank account', 'account number', 'accnum', 'accno', 'acc_num']):
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="bankAccount", reasoning="Entering Bank Account from encrypted vault")
+                if 'amount' in desc and not 'budget' in desc:
+                    return ActionCommand(action=ActionType.TYPE, selector=sel, text="5000", reasoning="Entering transfer amount ₹5,000")
+                if 'budget' in desc:
+                    return ActionCommand(action=ActionType.TYPE, selector=sel, text="₹ 25,00,000", reasoning="Entering requested research grant budget")
+                if inp_type == 'password' or 'cvv' in desc or 'pin' in desc:
+                    return ActionCommand(action=ActionType.TYPE, selector=sel, text="789", reasoning="Entering secure transaction authorization PIN")
+
+                # Space Research & Security Clearance
+                if 'clearance' in desc or 'badge' in desc:
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="securityClearance", reasoning="Entering ISRO Security Clearance ID")
+
+                # Names (Legal Name, Account Holder, Patient, Researcher)
+                if any(n in desc for n in ['name', 'holder', 'patient', 'applicant', 'researcher', 'citizen']) and not any(k in desc for k in ['username', 'filename', 'file', 'domain']):
+                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="fullName", reasoning="Entering full legal name from encrypted vault")
+
+        # ── 3. Form Submit / Action Execution Buttons ──
+        for el in accessibility_tree:
+            sel = el.get('selector', '')
+            if not sel or sel in executed_selectors: continue
+
+            tag = el.get('tag', '')
+            role = el.get('role', '')
+            text = (el.get('text') or '').lower()
+            aria = (el.get('ariaLabel') or '').lower()
+            btn_desc = f"{text} {aria} {sel.lower()}"
+
+            if tag in ['button', 'input'] or role == 'button':
+                if any(action_kw in btn_desc for action_kw in ['authorize', 'submit', 'verify', 'proceed', 'book', 'confirm', 'pay', 'send application']):
+                    return ActionCommand(
+                        action=ActionType.CLICK,
+                        selector=sel,
+                        reasoning=f"Submitting form via button: '{el.get('text') or sel}'"
+                    )
+
+        # ── 4. In-Page Search Input Bar Discovery (Strict Search Matching Only) ──
         if ActionType.TYPE not in previous_action_types:
             for el in accessibility_tree:
                 sel = el.get('selector', '')
-                if sel in executed_selectors: continue
+                if not sel or sel in executed_selectors: continue
                 
                 tag = el.get('tag', '')
-                inp_type = el.get('type', '')
+                inp_type = (el.get('type') or '').lower()
                 placeholder = (el.get('placeholder') or '').lower()
                 aria = (el.get('ariaLabel') or '').lower()
                 sel_lower = sel.lower()
+                desc = f"{sel_lower} {placeholder} {aria} {inp_type}"
 
-                if tag in ['input', 'textarea'] and (
-                    inp_type in ['search', 'text', ''] or
-                    'search' in sel_lower or 'search' in placeholder or 'search' in aria or 'q' in sel_lower
-                ):
+                # Only match genuine search inputs (never credential form fields!)
+                is_search_bar = (
+                    inp_type == 'search' or
+                    ('search' in desc and not any(f in desc for f in ['name', 'holder', 'email', 'phone', 'mobile', 'aadhaar', 'pan', 'bank', 'account', 'ifsc', 'cvv', 'pin', 'clearance', 'budget', 'amount', 'flight', 'city'])) or
+                    sel_lower in ['input[name="q"]', 'input#search', 'input[type="search"]', 'input[name="search"]']
+                )
+
+                if tag in ['input', 'textarea'] and is_search_bar:
                     search_term = " ".join([w for w in raw_words if w not in ['leetcode', 'google', 'website', 'page']]) or goal_clean
                     return ActionCommand(
                         action=ActionType.TYPE,
@@ -253,31 +326,7 @@ class VLMInferenceClient:
                         reasoning=f"Entering search term '{search_term}' into search bar"
                     )
 
-        # ── 3. Sensitive Credential Field Auto-Mapping ──
-        for el in accessibility_tree:
-            sel = el.get('selector', '')
-            if sel in executed_selectors: continue
-
-            tag = el.get('tag', '')
-            inp_type = (el.get('type') or '').lower()
-            placeholder = (el.get('placeholder') or '').lower()
-            aria = (el.get('ariaLabel') or '').lower()
-            text = (el.get('text') or '').lower()
-            combined_desc = f"{sel.lower()} {placeholder} {aria} {text}"
-
-            if tag in ['input', 'textarea']:
-                if 'email' in combined_desc or inp_type == 'email':
-                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="email", reasoning="Entering email from local encrypted vault")
-                if 'phone' in combined_desc or 'mobile' in combined_desc or inp_type == 'tel':
-                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="phone", reasoning="Entering phone number from local vault")
-                if 'aadhaar' in combined_desc or 'aadhar' in combined_desc or 'uid' in combined_desc:
-                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="aadhaar", reasoning="Entering Aadhaar from local vault")
-                if 'pan' in combined_desc:
-                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="pan", reasoning="Entering PAN ID from local vault")
-                if 'name' in combined_desc and not any(k in combined_desc for k in ['username', 'file']):
-                    return ActionCommand(action=ActionType.FILL_LOCAL, selector=sel, local_data_key="fullName", reasoning="Entering full name from local vault")
-
-        # ── 4. General Element Scoring ──
+        # ── 5. General Element Scoring Fallback ──
         best_element = None
         best_score = -1
         best_action_type = ActionType.CLICK
@@ -317,7 +366,7 @@ class VLMInferenceClient:
                 reasoning=f"Interacting with best matched element: '{desc}'"
             )
 
-        # ── 5. Completion Check ──
+        # ── 6. Completion Check ──
         if len(previous_actions) >= 1:
             return ActionCommand(
                 action=ActionType.DONE,
