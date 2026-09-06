@@ -10,86 +10,166 @@
 
 ---
 
-## 🏛️ 1. Interactive System Design Architecture
+## 🏛️ 1. End-to-End System Architecture
 
 ```mermaid
 flowchart TD
-    classDef clientBox fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    classDef securityBox fill:#1e1b4b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
-    classDef serverBox fill:#0b0f19,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
-    classDef actionBox fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
-    classDef subBox fill:#1e293b,stroke:#475569,stroke-width:1px,color:#cbd5e1;
+    %% Global Styling
+    classDef clientStyle fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef firewallStyle fill:#1e1b4b,stroke:#c084fc,stroke-width:2px,color:#f8fafc;
+    classDef transportStyle fill:#0b1329,stroke:#60a5fa,stroke-width:2px,color:#f8fafc;
+    classDef securityStyle fill:#2e1065,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef serverStyle fill:#022c22,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef nodeStyle fill:#1e293b,stroke:#475569,stroke-width:1px,color:#f1f5f9;
+    classDef vaultStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
 
-    subgraph ClientTier ["🖥️ CLIENT TIER: Chrome Extension (Manifest V3)"]
+    %% Tier 1: Client Application Layer
+    subgraph TIER1 ["🌐 TIER 1: CLIENT BROWSER & VIEWPORT (Manifest V3)"]
+        direction LR
+        Tab["🖥️ Active Webpage<br/>(Google, Forms, Portals)"]
+        A11y["📑 DOM Accessibility Tree<br/>(Interactive Elements)"]
+        Vault[("🔐 Local User Vault<br/>(chrome.storage.local)")]
+        Executor["⚡ Action Executor<br/>(Highlight & Human Events)"]
+    end
+
+    %% Tier 2: On-Device Privacy Firewall
+    subgraph TIER2 ["🔒 TIER 2: ON-DEVICE PRIVACY FIREWALL (WebGPU Compute Engine)"]
         direction TB
-
-        subgraph ViewportLayer ["1. Viewport & DOM Capture"]
-            ActiveTab["🌐 Active Browser Tab<br/>(Google, Portal, E-Commerce)"]
-            A11yTree["📑 DOM Accessibility Tree<br/>(Filtered Interactive Elements)"]
+        subgraph Detectors ["Cascaded PII Detection Pipeline"]
+            direction LR
+            D1["1️⃣ DOM Form Scanner<br/>(Passwords, CC Inputs)"]
+            D2["2️⃣ Indian PII Regex<br/>(Aadhaar, PAN, Phone)"]
+            D3["3️⃣ ML Vision Model<br/>(BlazeFace + YOLOv8n)"]
         end
-
-        subgraph PrivacyFirewall ["2. On-Device Privacy Firewall (WebGPU Compute)"]
-            Layer1["⚡ Layer 1: DOM Form Scanner<br/>(Passwords, Credit Cards, Inputs)"]
-            Layer2["🔍 Layer 2: Indian PII Regex<br/>(Aadhaar, PAN, Phone, Email)"]
-            Layer3["👁️ Layer 3: ML Vision Detector<br/>(BlazeFace + YOLOv8n ONNX)"]
-            Redactor["🎨 Canvas Redaction Engine<br/>(Blackout, Blur, Pixelate + 10% Dilation)"]
-        end
-
-        subgraph LocalVaultGroup ["3. Zero-Trust Local Storage"]
-            LocalVault[("🔐 Local Encrypted Vault<br/>(chrome.storage.local)")]
-            ContentRunner["⚡ DOM Action Executor<br/>(Target Highlight & Human-Like Events)"]
-        end
+        Redactor["🎨 Canvas Visual Redaction Core<br/>(Blackout, Blur, Pixelate + 10% Dilation Buffer)"]
     end
 
-    subgraph TransportLayer ["🌐 SECURE TRANSPORT: TLS 1.3 WebSocket Tunnel"]
-        Payload["📦 Sanitized Payload<br/>• Redacted Frame with [PII_*] Tokens<br/>• Structural Accessibility Tree<br/>• Cryptographic Nonce & Timestamp"]
+    %% Tier 3: Secure Transport Bridge
+    subgraph TIER3 ["🛰️ TIER 3: ENCRYPTED TRANSPORT (TLS 1.3 WebSocket Tunnel)"]
+        Payload["📦 Sanitized Payload Package<br/>• Redacted Image with [PII_*] Tokens<br/>• Structural Layout Tree (Zero Raw PII)<br/>• Cryptographic Nonce & Freshness Timestamp"]
     end
 
-    subgraph ServerTier ["☁️ SERVER TIER: FastAPI & Multi-Modal Reasoning Hub"]
+    %% Tier 4: Cybersecurity Sandbox Gatekeeper
+    subgraph TIER4 ["🛡️ TIER 4: SERVER CYBERSECURITY GATEKEEPER"]
+        direction LR
+        S1["🛡️ Anti-Prompt Injection<br/>(Adversarial HTML Neutralizer)"]
+        S2["⏱️ Rate Limiter<br/>(Token-Bucket Anti-DoS)"]
+        S3["🔒 Action Sandbox<br/>(Protocol & Keyword Guard)"]
+    end
+
+    %% Tier 5: Multi-Modal Reasoning Hub
+    subgraph TIER5 ["🧠 TIER 5: MULTI-MODAL REASONING CORE"]
         direction TB
-
-        subgraph SecurityLayer ["4. Zero-Trust Cybersecurity Sandbox"]
-            AntiInject["🛡️ Anti-Prompt Injection<br/>(Adversarial HTML Filter)"]
-            RateLimit["⏱️ Token-Bucket Rate Limiter<br/>(12 req / 6s)"]
-            Sandbox["🔒 Action Sandbox &<br/>Protocol Blocklist"]
+        subgraph Models ["Reasoning Engines"]
+            direction LR
+            M1["👁️ Vision-Language Model<br/>(Qwen2.5-VL-7B / Groq Llama-3.2)"]
+            M2["⚙️ Universal Semantic Reasoner<br/>(Dynamic Intent & DOM Scorer)"]
         end
-
-        subgraph ReasoningCore ["5. Multi-Modal Reasoning Engine"]
-            VLM["🧠 Vision-Language Model<br/>(Qwen2.5-VL-7B / Groq Llama-3.2)"]
-            Reasoner["⚙️ Universal Semantic Reasoner<br/>(Deterministic Intent Parser)"]
-            ReAct["🔄 LangGraph ReAct Loop<br/>(Stateful Plan Generator)"]
-        end
+        ReAct["🔄 LangGraph ReAct State Machine<br/>(Reason ➔ Plan ➔ Validate ➔ Emit Action)"]
     end
 
-    %% Flow Connections
-    ActiveTab -->|Viewport Capture| PrivacyFirewall
-    ActiveTab -->|DOM Traversal| A11yTree
-    Layer1 --> Redactor
-    Layer2 --> Redactor
-    Layer3 --> Redactor
-    A11yTree --> Payload
-    Redactor -->|Sanitized Frame| Payload
+    %% Clean Top-to-Bottom Flow Connections
+    Tab ==>|1. Viewport Capture| Detectors
+    Tab -->|2. Extract Structure| A11y
+    
+    Detectors --> Redactor
+    Redactor ==>|3. Sanitized Visual Frame| Payload
+    A11y -->|4. Clean Node Graph| Payload
 
-    Payload -->|Encrypted WSS| SecurityLayer
-    SecurityLayer -->|Sanitized State| ReasoningCore
-    VLM <--> ReAct
-    Reasoner <--> ReAct
+    Payload ==>|5. Encrypted WSS Stream| TIER4
+    TIER4 ==>|6. Verified Clean Payload| Models
+    
+    Models <==> ReAct
 
-    ReAct -->|Structured ActionCommand JSON| ContentRunner
-    LocalVault -.->|Zero-Trust Local Fill| ContentRunner
-    ContentRunner -->|Execute Click / Type / Scroll| ActiveTab
+    ReAct ==>|7. Structured ActionCommand JSON| Executor
+    Vault -.->|8. Zero-Trust Local Fill| Executor
+    Executor ==>|9. Execute Click / Type / Scroll| Tab
 
-    %% Styling
-    class ActiveTab,A11yTree,Layer1,Layer2,Layer3,Redactor,Payload subBox;
-    class LocalVault,ContentRunner actionBox;
-    class AntiInject,RateLimit,Sandbox securityBox;
-    class VLM,Reasoner,ReAct serverBox;
+    %% Apply Classes
+    class Tab,A11y nodeStyle;
+    class Vault,Executor vaultStyle;
+    class D1,D2,D3,Redactor nodeStyle;
+    class Payload transportStyle;
+    class S1,S2,S3 nodeStyle;
+    class M1,M2,ReAct nodeStyle;
+    class TIER1 clientStyle;
+    class TIER2 firewallStyle;
+    class TIER3 transportStyle;
+    class TIER4 securityStyle;
+    class TIER5 serverStyle;
 ```
 
 ---
 
-## 📌 2. Project Overview & Innovation
-Traditional agentic AI pipelines transmit raw screenshots and screen state directly to remote servers or cloud VLMs, leaking sensitive user data (passwords, Aadhaar numbers, PAN cards, biometrics, financial info).
+## 🔍 2. On-Device Quad-Layer Redaction Pipeline
+
+```mermaid
+flowchart LR
+    classDef inputStyle fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef l1Style fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
+    classDef l2Style fill:#311042,stroke:#c084fc,stroke-width:2px,color:#f8fafc;
+    classDef l3Style fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef l4Style fill:#022c22,stroke:#34d399,stroke-width:2px,color:#f8fafc;
+    classDef outStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+
+    Raw["📸 Raw Screenshot<br/>+ Active Web DOM"]
+    
+    L1["⚡ Layer 1: DOM Scanner<br/>• Password Fields<br/>• Credit Card Inputs<br/>• Form Autocomplete"]
+    L2["🔍 Layer 2: Regex Engine<br/>• Aadhaar UID (12-Digit)<br/>• PAN Card (5L+4D+1L)<br/>• Phone (+91/6-9)<br/>• RFC-5322 Emails"]
+    L3["👁️ Layer 3: WebGPU Vision<br/>• BlazeFace (Avatars)<br/>• YOLOv8n (ID Cards)<br/>• Aspect Ratio Check"]
+    L4["🎨 Canvas Redactor<br/>• Solid Blackout Mask<br/>• Gaussian 25x Blur<br/>• Block Pixelation<br/>• +10% Dilation Buffer"]
+
+    Sanitized["🛡️ Zero-PII Frame<br/>[PII_AADHAAR]<br/>[PASSWORD_MASK]<br/>[USER_AVATAR]"]
+
+    Raw --> L1
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> Sanitized
+
+    class Raw inputStyle;
+    class L1 l1Style;
+    class L2 l2Style;
+    class L3 l3Style;
+    class L4 l4Style;
+    class Sanitized outStyle;
+```
+
+---
+
+## 🔒 3. Cybersecurity Defense Architecture
+
+```mermaid
+flowchart LR
+    classDef threat fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fecaca;
+    classDef defense fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#e9d5ff;
+    classDef safe fill:#022c22,stroke:#10b981,stroke-width:2px,color:#a7f3d0;
+
+    Threat["⚠️ Untrusted Web Page<br/>• Hidden Injection Text<br/>• javascript: Malicious URLs<br/>• Destructive Delete Loops"]
+    
+    subgraph Defenses ["🛡️ Multi-Tier Cybersecurity Defense Gate"]
+        direction TB
+        G1["1. Anti-Prompt Injection Sanitizer<br/>(Neutralizes hidden system override prompts)"]
+        G2["2. Navigation Protocol Whitelist<br/>(Bans javascript:, data:, file:, chrome:)"]
+        G3["3. Destructive Action Interceptor<br/>(Blocks unauthorized delete/format actions)"]
+        G4["4. Anti-Replay Nonce & Timestamp Guard<br/>(Rejects stale frames >35s or replayed nonces)"]
+        G5["5. Token-Bucket Rate Limiter<br/>(Caps requests at 12 req / 6s)"]
+    end
+
+    SafeAction["✅ Verified ActionCommand JSON<br/>(click, type, fill_local, done)"]
+
+    Threat ==> Defenses
+    Defenses ==> SafeAction
+
+    class Threat threat;
+    class G1,G2,G3,G4,G5 defense;
+    class SafeAction safe;
+```
+
+---
+
+## 📌 4. Problem Statement & Core Innovation
+Traditional visual browser agents transmit raw screen captures to central Vision-Language Models (VLMs), creating severe privacy violations and compliance liabilities (DPDP Act 2023, IT Act 2000).
 
 This prototype implements an **On-Device Privacy Firewall** inside a Chrome Extension (Manifest V3):
 1. **On-Device Visual & DOM Perception:** Evaluates the live screen state locally using DOM input attribute scanners, Indian PII regex patterns, and Canvas visual models.
@@ -99,35 +179,7 @@ This prototype implements an **On-Device Privacy Firewall** inside a Chrome Exte
 
 ---
 
-## 🔒 3. Cybersecurity Defense Matrix
-
-```mermaid
-flowchart LR
-    classDef threat fill:#450a0a,stroke:#ef4444,stroke-width:2px,color:#fecaca;
-    classDef defense fill:#022c22,stroke:#10b981,stroke-width:2px,color:#a7f3d0;
-    classDef safe fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-
-    Threat["⚠️ Untrusted Web Page<br/>(Hidden Prompts, Injections, Tracking)"]
-    
-    subgraph Defenses ["🛡️ Multi-Layer Cybersecurity Filters"]
-        AntiInj["Anti-Prompt Injection<br/>Sanitizer"]
-        ProtoFilter["Protocol Blocklist<br/>(Blocks javascript:, data:, file:)"]
-        RateLim["Token-Bucket Rate Limiter<br/>(Anti-DoS)"]
-        ReplayGuard["Cryptographic Nonce<br/>Replay Defense"]
-    end
-
-    SafeAction["✅ Verified ActionCommand<br/>(click, type, fill_local, done)"]
-
-    Threat --> AntiInj
-    AntiInj --> ProtoFilter
-    ProtoFilter --> RateLim
-    RateLim --> ReplayGuard
-    ReplayGuard --> SafeAction
-
-    class Threat threat;
-    class AntiInj,ProtoFilter,RateLim,ReplayGuard defense;
-    class SafeAction safe;
-```
+## 🔒 5. Cybersecurity Defense Matrix
 
 | Security Vector | Implementation Detail | Protection Guarantee |
 |---|---|---|
@@ -142,12 +194,12 @@ flowchart LR
 
 ---
 
-## 🏗️ 4. Repository Structure
+## 🏗️ 6. Repository Structure
 
 ```
 d:\Projects\SIH\
 ├── .gitignore                       # Git exclusion rules (protects .env, keys, caches)
-├── README.md                        # Complete documentation & interactive Mermaid design
+├── README.md                        # Complete documentation & interactive system design
 ├── SIH_2026_PS26171_Implementation_Plan.pdf # 5-page Technical Blueprint PDF
 ├── extension/                       # Chrome Extension (Manifest V3)
 │   ├── manifest.json                # MV3 config with activeTab & offscreen permissions
@@ -194,7 +246,7 @@ d:\Projects\SIH\
 
 ---
 
-## 🚀 5. Quickstart & Live Demo Instructions
+## 🚀 7. Quickstart & Live Demo Instructions
 
 ### Step 1: Install Python Dependencies
 ```powershell
@@ -231,7 +283,7 @@ python main.py
 
 ---
 
-## 📊 6. SIH Evaluation Criteria Alignment (PS 26171)
+## 📊 8. SIH Evaluation Criteria Alignment (PS 26171)
 
 | Evaluation Metric | Weight | Implementation Details | Verified Performance |
 |---|---|---|---|
@@ -243,7 +295,7 @@ python main.py
 
 ---
 
-## 🧪 7. Automated Test Suite
+## 🧪 9. Automated Test Suite
 Run the test suite to verify endpoints, regex engines, action schemas, and cybersecurity filters:
 ```powershell
 pytest scripts/test_redaction.py -v
@@ -252,7 +304,7 @@ pytest scripts/test_redaction.py -v
 
 ---
 
-## 📜 8. Privacy & Legal Compliance
+## 📜 10. Privacy & Legal Compliance
 - **Digital Personal Data Protection (DPDP) Act 2023 (India):** Adheres strictly to data minimization and purpose limitation by ensuring personal data never leaves the user device.
 - **IT Act 2000 (India):** Encrypted WSS transport (TLS 1.3) with ephemeral session nonces.
 - **Zero Server Persistence:** Visual frames are processed in-memory and discarded immediately after action generation.
