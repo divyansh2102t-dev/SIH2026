@@ -24,7 +24,10 @@
 
     <!-- Goal Input Section -->
     <section class="section goal-section">
-      <label for="goalInput" class="section-label">Agent Objective / Task Goal</label>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label for="goalInput" class="section-label" style="margin-bottom: 0;">Agent Objective / Task Goal</label>
+        <button id="quickRecentBtn" class="link-btn" style="font-size: 9.5px; color: #38bdf8; background: none; border: none; cursor: pointer;">🕒 Recent (20)</button>
+      </div>
       <div class="input-wrapper">
         <textarea id="goalInput" rows="2" placeholder="e.g., Search leetcode or fill citizen form"></textarea>
       </div>
@@ -105,8 +108,45 @@
     <!-- Footer -->
     <footer class="footer">
       <div class="footer-left">Zero-Trust On-Device Perception</div>
-      <button id="openVaultBtn" class="link-btn">🔐 Local Vault</button>
+      <div style="display: flex; gap: 8px;">
+        <button id="openHistoryBtn" class="link-btn" title="View last 20 searches saved locally">🕒 History (20)</button>
+        <button id="openVaultBtn" class="link-btn">🔐 Local Vault</button>
+      </div>
     </footer>
+  </div>
+
+  <!-- Local Search History Modal (Last 20) -->
+  <div id="historyModal" class="modal" style="display: none;">
+    <div class="modal-content history-modal-content">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14px;">🕒</span>
+          <div>
+            <h3 style="font-size: 13px; color: #ffffff;">Local Search & Task History</h3>
+            <div style="font-size: 9px; color: #38bdf8;">Saved 100% on your device (Last 20 Tasks)</div>
+          </div>
+        </div>
+        <button id="closeHistoryBtn" class="close-btn">&times;</button>
+      </div>
+      
+      <p class="modal-desc" style="margin-bottom: 8px;">
+        Click any past search or objective to instantly re-populate into the agent:
+      </p>
+
+      <div id="historyListContainer" class="history-list-container">
+        <!-- Dynamically rendered history cards -->
+        <div id="historyEmptyState" class="history-empty">
+          <span>No search history yet. Run an agent task to record local history.</span>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);">
+        <span style="font-size: 9.5px; color: #64748b;">Max 20 Local Records</span>
+        <button id="clearHistoryBtn" class="btn btn-secondary" style="padding: 4px 10px; font-size: 10px; color: #ef4444; border-color: rgba(239,68,68,0.3);">
+          🗑️ Clear History
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Fullscreen / Enlarged Image Lightbox Modal -->

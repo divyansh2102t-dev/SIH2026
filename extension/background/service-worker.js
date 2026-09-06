@@ -373,7 +373,66 @@ function handleServerMessage(message) {
   }
 }
 
-// ── 7. Agent Control Functions with Smart Domain Switching ──
+// ── 7. Local 20-Search History Vault Manager ──
+
+let currentSessionId = null;
+let currentSessionPiiCount = 0;
+
+async function recordSearchSessionStart(goal, tabUrl) {
+  currentSessionId = `session_${Date.now()}`;
+  currentSessionPiiCount = 0;
+
+  try {
+    const res = await chrome.storage.local.get(['searchHistory']);
+    let history = Array.isArray(res.searchHistory) ? res.searchHistory : [];
+
+    const newEntry = {
+      id: currentSessionId,
+      goal: goal,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      date: new Date().toLocaleDateString([], { month: 'short', day: 'numeric' }),
+      status: 'In Progress',
+      piiCount: 0,
+      steps: 1,
+      targetUrl: tabUrl || '',
+      timeMs: Date.now()
+    };
+
+    // Prepend and cap strictly to latest 20 items
+    history = [newEntry, ...history.filter(h => h.goal.trim() !== goal.trim())].slice(0, 20);
+    await chrome.storage.local.set({ searchHistory: history });
+  } catch (e) {
+    console.warn('[Service Worker] Failed to save search history start:', e);
+  }
+}
+
+async function recordSearchSessionEnd(statusMessage, isSuccess = false) {
+  if (!currentSessionId) return;
+
+  try {
+    const res = await chrome.storage.local.get(['searchHistory']);
+    let history = Array.isArray(res.searchHistory) ? res.searchHistory : [];
+
+    history = history.map(item => {
+      if (item.id === currentSessionId) {
+        return {
+          ...item,
+          status: isSuccess || statusMessage.toLowerCase().includes('achieved') || statusMessage.toLowerCase().includes('complete') ? 'Completed' : 'Stopped',
+          statusDetail: statusMessage,
+          piiCount: currentSessionPiiCount,
+          steps: currentIteration || 1
+        };
+      }
+      return item;
+    });
+
+    await chrome.storage.local.set({ searchHistory: history.slice(0, 20) });
+  } catch (e) {
+    console.warn('[Service Worker] Failed to update search history end:', e);
+  }
+}
+
+// ── 8. Agent Control Functions with Smart Domain Switching ──
 
 async function startAgentLoop(goal, tabId, tabUrl = '') {
   isLoopRunning = true;
@@ -381,6 +440,9 @@ async function startAgentLoop(goal, tabId, tabUrl = '') {
   currentIteration = 0;
   previousActions = [];
   connectWebSocket();
+
+  // Save to local 20-search history
+  await recordSearchSessionStart(goal, tabUrl);
 
   // Check if we need to navigate away from the current page to the target destination
   if (shouldNavigateAway(goal, tabUrl)) {
@@ -408,10 +470,12 @@ async function startAgentLoop(goal, tabId, tabUrl = '') {
 function stopAgentLoop(reason = 'User stopped') {
   isLoopRunning = false;
   console.log(`[Agent] Stopped loop: ${reason}`);
+  const isComplete = reason.toLowerCase().includes('achieved') || reason.toLowerCase().includes('complete');
+  recordSearchSessionEnd(reason, isComplete);
   broadcastToPopup({ type: 'AGENT_STOPPED', reason });
 }
 
-// ── 8. Message Listener from Popup ──
+// ── 9. Message Listener from Popup ──
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'START_AGENT') {
@@ -440,6 +504,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       iteration: currentIteration,
       wsConnected: ws && ws.readyState === WebSocket.OPEN,
       clientId: clientId
+    });
+    return true;
+  }
+
+  if (request.action === 'GET_SEARCH_HISTORY') {
+    chrome.storage.local.get(['searchHistory'], (res) => {
+      sendResponse({ success: true, history: res.searchHistory || [] });
+    });
+    return true;
+  }
+
+  if (request.action === 'CLEAR_SEARCH_HISTORY') {
+    chrome.storage.local.set({ searchHistory: [] }, () => {
+      sendResponse({ success: true });
     });
     return true;
   }

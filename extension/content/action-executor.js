@@ -7,10 +7,18 @@
   let hudElement = null;
   let highlightElement = null;
 
+  let isMinimized = false;
+  let lastMessage = '';
+  let lastStatus = 'active';
+  let minimizeTimeout = null;
+
   /**
-   * Initializes or updates the in-page Floating Agent HUD
+   * Initializes or updates the in-page Floating Agent HUD with Auto-Minimizing on Task Completion
    */
   function updateAgentHUD(message, status = 'active') {
+    lastMessage = message;
+    lastStatus = status;
+
     if (!hudElement) {
       hudElement = document.createElement('div');
       hudElement.id = 'sih-privacy-agent-hud';
@@ -21,20 +29,41 @@
         z-index: 2147483647;
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: #f8fafc;
-        padding: 10px 16px;
-        border-radius: 8px;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+        padding: 10px 14px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px -5px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.12);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-size: 12px;
         font-weight: 500;
         display: flex;
         align-items: center;
         gap: 10px;
-        pointer-events: none;
-        transition: all 0.3s ease;
+        pointer-events: auto;
+        cursor: default;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(8px);
       `;
       document.body.appendChild(hudElement);
     }
+
+    if (minimizeTimeout) {
+      clearTimeout(minimizeTimeout);
+      minimizeTimeout = null;
+    }
+
+    isMinimized = false;
+    renderHUDContent();
+
+    // Auto-minimize when task completes or on success
+    if (status === 'success' || message.toLowerCase().includes('complete') || message.toLowerCase().includes('achieved')) {
+      minimizeTimeout = setTimeout(() => {
+        minimizeHUD();
+      }, 1800);
+    }
+  }
+
+  function renderHUDContent() {
+    if (!hudElement) return;
 
     const statusColors = {
       active: '#3b82f6',
@@ -43,21 +72,70 @@
       error: '#ef4444'
     };
 
-    hudElement.innerHTML = `
-      <div style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColors[status] || '#3b82f6'}; box-shadow: 0 0 8px ${statusColors[status] || '#3b82f6'};"></div>
-      <div>
-        <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; font-weight: 700;">ISRO Privacy Agent</div>
-        <div style="color: #ffffff; font-weight: 600; margin-top: 1px;">${message}</div>
-      </div>
-    `;
+    if (isMinimized) {
+      hudElement.style.padding = '6px 12px';
+      hudElement.style.borderRadius = '20px';
+      hudElement.style.cursor = 'pointer';
+      hudElement.style.opacity = '0.92';
+      hudElement.style.transform = 'scale(0.95)';
+      hudElement.title = 'Click to expand ISRO Agent Status';
 
-    if (status === 'success') {
-      setTimeout(() => {
-        if (hudElement) hudElement.style.opacity = '0.5';
-      }, 3000);
+      hudElement.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 7px; height: 7px; border-radius: 50%; background: ${statusColors[lastStatus] || '#10b981'}; box-shadow: 0 0 8px ${statusColors[lastStatus] || '#10b981'};"></div>
+          <span style="font-size: 10px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px;">ISRO Agent · ${lastStatus === 'success' ? 'Done ✓' : 'Active'}</span>
+          <span id="sih-hud-expand-btn" style="font-size: 10px; color: #94a3b8; margin-left: 4px; padding: 2px 4px; border-radius: 4px; background: rgba(255,255,255,0.08);">⤢</span>
+          <span id="sih-hud-close-btn" style="font-size: 11px; color: #64748b; margin-left: 2px; padding: 0 3px; cursor: pointer;" title="Close HUD">✕</span>
+        </div>
+      `;
+
+      hudElement.onclick = (e) => {
+        if (e.target && e.target.id === 'sih-hud-close-btn') {
+          e.stopPropagation();
+          hudElement.remove();
+          hudElement = null;
+          return;
+        }
+        expandHUD();
+      };
     } else {
+      hudElement.style.padding = '10px 14px';
+      hudElement.style.borderRadius = '10px';
+      hudElement.style.cursor = 'default';
       hudElement.style.opacity = '1';
+      hudElement.style.transform = 'scale(1)';
+      hudElement.title = '';
+      hudElement.onclick = null;
+
+      hudElement.innerHTML = `
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColors[lastStatus] || '#3b82f6'}; box-shadow: 0 0 8px ${statusColors[lastStatus] || '#3b82f6'}; flex-shrink: 0;"></div>
+        <div style="flex: 1; max-width: 320px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; font-weight: 700;">ISRO Privacy Agent</div>
+            <div style="display: flex; gap: 6px;">
+              <span id="sih-hud-min-btn" style="cursor: pointer; font-size: 11px; color: #94a3b8; padding: 0 3px;" title="Minimize HUD">−</span>
+              <span id="sih-hud-close-btn" style="cursor: pointer; font-size: 11px; color: #64748b; padding: 0 3px;" title="Close HUD">✕</span>
+            </div>
+          </div>
+          <div style="color: #ffffff; font-weight: 600; margin-top: 2px; font-size: 11.5px; word-break: break-word;">${lastMessage}</div>
+        </div>
+      `;
+
+      const minBtn = hudElement.querySelector('#sih-hud-min-btn');
+      if (minBtn) minBtn.onclick = (e) => { e.stopPropagation(); minimizeHUD(); };
+      const closeBtn = hudElement.querySelector('#sih-hud-close-btn');
+      if (closeBtn) closeBtn.onclick = (e) => { e.stopPropagation(); hudElement.remove(); hudElement = null; };
     }
+  }
+
+  function minimizeHUD() {
+    isMinimized = true;
+    renderHUDContent();
+  }
+
+  function expandHUD() {
+    isMinimized = false;
+    renderHUDContent();
   }
 
   /**

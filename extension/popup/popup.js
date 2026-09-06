@@ -200,7 +200,92 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── 7. Local Vault Management ──
+  // ── 7. Local Search & Task History Management (Last 20) ──
+
+  const openHistoryBtn = document.getElementById('openHistoryBtn');
+  const quickRecentBtn = document.getElementById('quickRecentBtn');
+  const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+  const historyModal = document.getElementById('historyModal');
+  const historyListContainer = document.getElementById('historyListContainer');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+  function openHistoryModal() {
+    renderSearchHistory();
+    historyModal.style.display = 'flex';
+  }
+
+  function closeHistoryModal() {
+    historyModal.style.display = 'none';
+  }
+
+  function renderSearchHistory() {
+    chrome.storage.local.get(['searchHistory'], (res) => {
+      const history = Array.isArray(res.searchHistory) ? res.searchHistory : [];
+      historyListContainer.innerHTML = '';
+
+      if (history.length === 0) {
+        historyListContainer.innerHTML = `
+          <div class="history-empty">
+            <span>No search history yet.<br>Your last 20 tasks will be securely saved locally on this machine.</span>
+          </div>
+        `;
+        return;
+      }
+
+      history.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'history-card';
+        card.title = 'Click to use this goal';
+
+        const statusClass = (item.status || '').toLowerCase().replace(/\s+/g, '-');
+        const statusLabel = item.status || 'Completed';
+
+        card.innerHTML = `
+          <div class="history-goal-row">
+            <div class="history-goal-text">${escapeHtml(item.goal || '')}</div>
+            <button class="history-use-btn">⚡ Use</button>
+          </div>
+          <div class="history-meta-row">
+            <span>🕒 ${item.date || ''} ${item.timestamp || ''} · ${item.steps || 1} step${(item.steps || 1) > 1 ? 's' : ''}</span>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              ${item.piiCount ? `<span style="color: #38bdf8;">🛡️ ${item.piiCount} PII</span>` : ''}
+              <span class="history-badge ${statusClass}">${statusLabel}</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          goalInput.value = item.goal;
+          closeHistoryModal();
+          goalInput.focus();
+        });
+
+        historyListContainer.appendChild(card);
+      });
+    });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  if (openHistoryBtn) openHistoryBtn.addEventListener('click', openHistoryModal);
+  if (quickRecentBtn) quickRecentBtn.addEventListener('click', openHistoryModal);
+  if (closeHistoryBtn) closeHistoryBtn.addEventListener('click', closeHistoryModal);
+
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear your local search history?')) {
+        chrome.storage.local.set({ searchHistory: [] }, () => {
+          renderSearchHistory();
+        });
+      }
+    });
+  }
+
+  // ── 8. Local Vault Management ──
 
   openVaultBtn.addEventListener('click', () => {
     chrome.storage.local.get(['userVault'], (res) => {
@@ -231,5 +316,14 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Local vault saved securely on your device.');
       vaultModal.style.display = 'none';
     });
+  });
+
+  // Modal ESC key listener
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeEnlargedModal();
+      closeHistoryModal();
+      vaultModal.style.display = 'none';
+    }
   });
 });
