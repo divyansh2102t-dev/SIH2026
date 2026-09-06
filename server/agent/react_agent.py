@@ -1,12 +1,13 @@
 """
 SIH 2026 - Problem Statement 26171 (ISRO)
-Stateful ReAct Agent with Security Guardrails & Action Validation
+Stateful ReAct Agent with Integrated Cybersecurity Defenses
 """
 
 import re
 from typing import Dict, Any, List
 from config import settings
 from agent.action_schema import SanitizedClientPayload, ActionCommand, ActionType
+from agent.security_guard import security_guard
 from vlm.vlm_client import vlm_client
 
 # Indian PII regex patterns for outgoing action security filtering
@@ -24,7 +25,7 @@ class ReActBrowserAgent:
 
     async def process_step(self, payload: SanitizedClientPayload) -> ActionCommand:
         """
-        Processes a single sanitized screen observation step
+        Processes a single sanitized screen observation step with security verification
         """
         iteration = payload.iteration
         print(f"[ReAct Agent] Session {self.session_id} - Processing Step {iteration} for goal: '{payload.userGoal}'")
@@ -37,23 +38,28 @@ class ReActBrowserAgent:
                 reasoning="Safety guardrail triggered to prevent infinite loops."
             )
 
-        # 2. Invoke VLM / Structural Reasoner
-        action_command = await vlm_client.infer_next_action(
+        # 2. Cybersecurity: Sanitize accessibility tree from prompt injections
+        sanitized_a11y_tree = security_guard.sanitize_accessibility_tree(payload.accessibilityTree)
+
+        # 3. Invoke VLM / Structural Reasoner
+        raw_action = await vlm_client.infer_next_action(
             goal=payload.userGoal,
             redacted_screenshot_b64=payload.redactedScreenshot,
-            accessibility_tree=payload.accessibilityTree,
+            accessibility_tree=sanitized_a11y_tree,
             redaction_log=payload.redactionLog,
             previous_actions=payload.previousActions,
             iteration=iteration
         )
 
-        # 3. Security Filter: Prevent server from echoing raw PII into 'type' commands
+        # 4. Cybersecurity Sandbox Validation
+        action_command = security_guard.validate_outgoing_action(raw_action)
+
+        # 5. Security Filter: Prevent server from echoing raw PII into 'type' commands
         if settings.ENABLE_SECURITY_FILTER and action_command.action == ActionType.TYPE:
             text_to_type = action_command.text or ""
             for pattern in SENSITIVE_PATTERNS:
                 if pattern.search(text_to_type):
-                    print(f"[Security Guardrail] Blocked unsafe type command containing sensitive pattern!")
-                    # Convert to zero-trust local fill
+                    print(f"[Security Guardrail] Converted raw PII text to zero-trust local vault fill")
                     return ActionCommand(
                         action=ActionType.FILL_LOCAL,
                         selector=action_command.selector,

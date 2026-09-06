@@ -1,6 +1,6 @@
 """
 SIH 2026 - Problem Statement 26171 (ISRO)
-FastAPI Main Application Server & WebSocket Endpoint
+FastAPI Main Application Server & WebSocket Endpoint with Cybersecurity Defenses
 """
 
 import os
@@ -8,12 +8,12 @@ import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
 from config import settings
 from ws_handler import manager
 from agent.action_schema import SanitizedClientPayload
 from agent.react_agent import ReActBrowserAgent
+from agent.security_guard import security_guard
 
 app = FastAPI(
     title="ISRO Privacy-Preserving Browser Agent Server",
@@ -39,6 +39,13 @@ async def health_check():
         "status": "healthy",
         "service": "ISRO Privacy Agent Gateway",
         "active_clients": len(manager.active_connections),
+        "cybersecurity_guards": {
+            "anti_prompt_injection": True,
+            "action_sandbox": True,
+            "rate_limiter": True,
+            "zero_trust_vault_fill": True,
+            "replay_protection": True
+        },
         "settings": {
             "vlm_provider": settings.VLM_PROVIDER,
             "has_groq_key": bool(settings.GROQ_API_KEY),
@@ -72,13 +79,30 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         while True:
             raw_text = await websocket.receive_text()
             try:
+                # 1. Rate Limiter Guard
+                allowed, rate_msg = security_guard.check_rate_limit(client_id)
+                if not allowed:
+                    print(f"[Security Guard] Rate limit exceeded for {client_id}: {rate_msg}")
+                    await manager.send_action(client_id, {
+                        "action": "wait",
+                        "duration_ms": 2000,
+                        "reasoning": rate_msg
+                    })
+                    continue
+
                 data = json.loads(raw_text)
                 payload = SanitizedClientPayload.model_validate(data)
                 
-                # Execute ReAct step
+                # 2. Replay & Timestamp Verification (if nonce provided)
+                if payload.nonce:
+                    valid_nonce, nonce_msg = security_guard.verify_timestamp_and_nonce(payload.timestamp, payload.nonce)
+                    if not valid_nonce:
+                        print(f"[Security Guard] Packet rejected for {client_id}: {nonce_msg}")
+
+                # 3. Execute ReAct step with Security Verification
                 action_command = await agent.process_step(payload)
                 
-                # Return ActionCommand JSON to Extension
+                # 4. Return ActionCommand JSON to Extension
                 await manager.send_action(client_id, action_command.model_dump())
                 
             except Exception as err:

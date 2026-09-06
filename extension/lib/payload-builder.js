@@ -1,6 +1,6 @@
 /**
  * SIH 2026 - Problem Statement 26171 (ISRO)
- * Sanitized Payload Builder: Assembles safe multi-modal transmission packets
+ * Sanitized Payload Builder: Assembles safe multi-modal transmission packets with Security Nonce
  */
 
 function buildSanitizedPayload({
@@ -16,6 +16,7 @@ function buildSanitizedPayload({
   return {
     sessionId: sessionId || `session_${Date.now()}`,
     timestamp: Date.now(),
+    nonce: `nonce_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`,
     iteration: iteration,
     userGoal: userGoal,
     // Sanitized visual frame (all PII replaced with placeholder tokens)

@@ -1,6 +1,6 @@
 """
 SIH 2026 - Problem Statement 26171 (ISRO)
-Structured Action Command Schema (Pydantic v2)
+Structured Action Command Schema (Pydantic v2) with Security Nonce
 """
 
 from enum import Enum
@@ -40,6 +40,7 @@ class RedactedRegionManifest(BaseModel):
 class SanitizedClientPayload(BaseModel):
     sessionId: str
     timestamp: int
+    nonce: Optional[str] = None
     iteration: int = 1
     userGoal: str
     redactedScreenshot: str # Base64 data URL
